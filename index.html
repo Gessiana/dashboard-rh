@@ -626,6 +626,14 @@ tbody tr:hover{background:var(--surface-2);}
   body.printing-pdi-only > .app{display:none !important;}
   body.printing-pdi-only #pdiPrintRoot{display:block !important;padding:28px;max-width:900px;margin:0 auto;}
 }
+/* Impressão isolada do Checklist de Admissão/Desligamento (botão "Imprimir
+   Checklist / Gerar PDF") — mesmo padrão de clone destacado usado no Plano
+   de PDI/Onboarding e nos demais relatórios do dashboard. */
+#admdeslPrintRoot{display:none;}
+@media print{
+  body.printing-admdesl-only > .app{display:none !important;}
+  body.printing-admdesl-only #admdeslPrintRoot{display:block !important;padding:28px;max-width:900px;margin:0 auto;}
+}
 /* Impressão isolada do Mural de Aniversariantes (botão "Imprimir Mural de
    Aniversariantes") — mesmo padrão de clone destacado usado no Plano de
    PDI/Onboarding: apenas o mural vai para o papel, nunca o dashboard todo. */
@@ -1693,6 +1701,103 @@ tbody tr:hover{background:var(--surface-2);}
             <textarea id="quickMsgOutput" rows="12" class="form-control" style="width:100%;min-width:100%;font-family:inherit;" placeholder="Selecione um modelo e clique em &quot;Gerar Mensagem&quot;...">Selecione um modelo e clique em "Gerar Mensagem"...</textarea>
           </div>
           <div class="hint">Tags dinâmicas suportadas: <code>{NOME}</code> <code>{CARGO}</code> <code>{LOJA}</code> <code>{DATA_HORA}</code> <code>{ENCARREGADO}</code> <code>{SALARIO}</code> <code>{TICKET}</code> <code>{DATA_ATUAL}</code> <code>{LINK_SALA}</code>. Campos não preenchidos aparecem como <code>[TAG]</code> no texto gerado para fácil identificação antes do envio.</div>
+        </div>
+
+        <!-- ---------- GERADOR & CONTROLE DE CHECKLIST DE ADMISSÃO E DESLIGAMENTO ----------
+             Checklist operacional completo de RH (Admissão: 22 itens em 5 categorias;
+             Desligamento: 18 itens em 4 categorias) com checklist interativo, barra de
+             progresso e Tabela de Acompanhamento — mesmo padrão visual do módulo de
+             PDI & Onboarding (.pdi-doc-*/.td-progress-*), persistido em localStorage. -->
+        <div class="card section-gap">
+          <div class="panel-header" style="padding:0 0 12px 0;">
+            <div>
+              <div class="panel-title">✅ Gerador de Checklist de Admissão &amp; Desligamento</div>
+              <div class="panel-sub">Checklist operacional completo (documentação, benefícios, acessos e devolução de ativos) com acompanhamento de progresso por colaborador.</div>
+            </div>
+          </div>
+
+          <h3 style="margin-top:0;">📄 Configurar Checklist</h3>
+          <div class="form-row">
+            <div class="form-field">
+              <label>Tipo de Checklist</label>
+              <select id="admdeslTipo" style="min-width:220px;">
+                <option value="">— Selecionar —</option>
+                <option value="Admissão">Checklist de Admissão</option>
+                <option value="Desligamento">Checklist de Desligamento</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Nome do Colaborador</label>
+              <select id="admdeslColabSelect" style="min-width:240px;"></select>
+            </div>
+            <div class="form-field">
+              <label>Cargo</label>
+              <input type="text" id="admdeslCargo" placeholder="Preenchido automaticamente...">
+            </div>
+            <div class="form-field">
+              <label>Setor</label>
+              <input type="text" id="admdeslSetor" placeholder="Preenchido automaticamente...">
+            </div>
+            <div class="form-field">
+              <label>Data de Início / Evento</label>
+              <input type="date" id="admdeslData">
+            </div>
+            <div class="form-field">
+              <label>Responsável pelo RH</label>
+              <input type="text" id="admdeslResponsavel" placeholder="Nome do responsável...">
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-primary" id="btnAdmDeslGerar" type="button">🚀 Gerar Checklist</button>
+            <button class="btn btn-outline" id="btnAdmDeslLimpar" type="button">🧹 Limpar / Novo Checklist</button>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin:18px 0 10px;">
+            <h3 style="margin-bottom:0;">Checklist Gerado</h3>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;" class="no-print">
+              <button class="btn btn-sm btn-primary" id="btnAdmDeslSalvar" type="button">💾 Salvar Checklist</button>
+              <button class="btn btn-sm" id="btnAdmDeslCopiar" type="button">📋 Copiar para Área de Transferência</button>
+              <button class="btn btn-sm btn-ghost" id="btnAdmDeslImprimir" type="button">🖨️ Imprimir Checklist / Gerar PDF</button>
+            </div>
+          </div>
+          <div class="hint" id="admdeslPlaceholder">Preencha os campos acima e clique em "Gerar Checklist".</div>
+          <div id="admdeslDoc" class="pdi-doc" style="display:none;"></div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin:22px 0 8px;flex-wrap:wrap;gap:8px;">
+            <h3 style="margin-bottom:0;">📊 Tabela de Acompanhamento</h3>
+            <div class="hint" id="admdeslCountInfo"></div>
+          </div>
+          <div class="form-row" style="margin-bottom:10px;align-items:flex-end;">
+            <div class="form-field">
+              <label>Tipo</label>
+              <select id="admdeslFiltroTipo" style="min-width:200px;">
+                <option value="todos">Admissão &amp; Desligamento</option>
+                <option value="Admissão">Somente Admissão</option>
+                <option value="Desligamento">Somente Desligamento</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Status</label>
+              <select id="admdeslFiltroStatus" style="min-width:180px;">
+                <option value="todos">Todos os Status</option>
+                <option value="andamento">Em Andamento</option>
+                <option value="concluido">Concluído 100%</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label>Buscar (Colaborador/Cargo/Setor)</label>
+              <input type="text" id="admdeslBusca" placeholder="Digite para buscar..." style="min-width:220px;">
+            </div>
+          </div>
+          <div class="table-wrap" style="max-height:420px;">
+            <table>
+              <thead><tr>
+                <th>Colaborador</th><th>Cargo</th><th>Setor</th><th>Tipo</th><th>Data</th><th>Responsável RH</th>
+                <th style="width:150px;">Progresso</th><th>Status</th><th class="no-print">Ações</th>
+              </tr></thead>
+              <tbody id="admdeslTbody"></tbody>
+            </table>
+          </div>
         </div>
       </section>
 
@@ -3098,6 +3203,10 @@ async function carregarDadosIniciais(){
   // Idem para a Gestão de Férias (FERIAS_REGISTROS) — fire-and-forget,
   // não bloqueia a carga principal do dashboard.
   sincronizarFeriasAutomatica(true);
+  // Idem para a Matriz de T&D do PDI/Onboarding (TD_PLANOS_REGISTROS) e
+  // para o Checklist de Admissão & Desligamento (ADM_DESL_CHECKLISTS).
+  sincronizarTDAutomatica(true);
+  sincronizarAdmDeslAutomatica(true);
 }
 function handleFiles(fileList){
   const file = fileList[0]; if(!file) return;
@@ -3232,7 +3341,7 @@ function renderTab(tab){
       case 'kanban': renderKanban(); break;
       case 'ninebox': renderNineBox(); break;
       case 'survey': /* estático, apenas garante axis atualizados */ break;
-      case 'tools': break;
+      case 'tools': renderTabelaAdmDesl(); break;
       case 'pdi-onboarding': renderTDPanel(); break;
       case 'vencimentos-legais': renderVencimentosLegais(); break;
       case 'recrutamento': renderRsPanel(); break;
@@ -3491,6 +3600,11 @@ function refreshEmployeeSelects(){
   // vínculo com um colaborador da base) — por isso mantém uma opção em branco.
   const pdiSel = $('pdiColabSelect');
   if(pdiSel){ const cur = pdiSel.value; pdiSel.innerHTML = '<option value="">— Selecionar (opcional) —</option>'+opts; if(cur) pdiSel.value = cur; }
+  // admdeslColabSelect (Gerador de Checklist de Admissão & Desligamento) —
+  // seleção OBRIGATÓRIA (gerarChecklistAdmDesl valida isso), por isso o
+  // placeholder deixa claro que é preciso escolher, sem "(opcional)".
+  const admdeslSel = $('admdeslColabSelect');
+  if(admdeslSel){ const cur = admdeslSel.value; admdeslSel.innerHTML = '<option value="">— Selecionar —</option>'+opts; if(cur) admdeslSel.value = cur; }
 }
 function gerarMensagem(){
   const mat = $('msgEmployeeSelect').value;
@@ -5267,6 +5381,532 @@ const PDI_ACOES = {
   'Orientação a Resultados':'Definição de metas SMART trimestrais com acompanhamento e feedback do gestor imediato.',
   'Conhecimento Técnico':'Inscrição em curso/certificação técnica da área e aplicação prática em projeto real.'
 };
+
+/* =====================================================================
+   ABA 7 (extensão) — GERADOR & CONTROLE DE CHECKLIST DE ADMISSÃO E
+   DESLIGAMENTO. Mesmo padrão visual/interativo (checkbox + barra de
+   progresso, classes .pdi-doc-* / .training-check / .td-progress-*) do
+   módulo de PDI & Onboarding — mas com registros PRÓPRIOS: aqui um mesmo
+   colaborador pode ter mais de um checklist salvo ao longo do tempo (ex.:
+   Admissão hoje e, futuramente, Desligamento em outra data), então cada
+   checklist é um REGISTRO independente com id próprio (não uma entrada
+   única por matrícula, como em TD_PLANOS_KEY). Geração e persistência são
+   passos separados: "Gerar Checklist" monta o documento em memória;
+   "Salvar Checklist" é que grava na Tabela de Acompanhamento — depois de
+   salvo, marcar/desmarcar um item persiste imediatamente, sem precisar
+   salvar de novo (mesmo comportamento do checklist de T&D do PDI/
+   Onboarding). 100% em localStorage, sem rota nova no Apps Script — sem
+   nenhum custo e sem depender da IA.
+   ===================================================================== */
+const ADM_DESL_STORAGE_KEY = 'hr_adm_desl_checklists_v1';
+/* Conteúdo oficial dos dois checklists, por categoria. A lista de
+   Desligamento fornecida pelo RH totaliza, item a item, 18 tarefas (não
+   17) distribuídas nas 4 categorias abaixo — mantida integralmente, sem
+   cortes, para não perder nenhuma etapa do processo. */
+const ADM_DESL_CHECKLISTS = {
+  'Admissão': [
+    { categoria:'Documentação & Contabilidade Terceirizada', itens:[
+      'Coletar documentos pessoais (RG, CPF, Comprovante de Residência, Dados Bancários, Carteira de Trabalho/eSocial).',
+      'Solicitar ASO Admissional ao fornecedor de medicina do trabalho.',
+      'Enviar ficha cadastral completa para a contabilidade terceirizada efetuar o registro.',
+      'Confirmar o retorno do contrato de trabalho gerado pela contabilidade e colher assinaturas.'
+    ]},
+    { categoria:'Contratos, Políticas & Compliance', itens:[
+      'Colher assinatura no Contrato de Trabalho e Termos Aditivos.',
+      'Entregar e colher assinatura no Termo de Aceite das Políticas Internas e Código de Conduta.',
+      'Entregar e colher assinatura na Ordem de Serviço (OS) de Segurança do Trabalho.',
+      'Entregar e colher assinatura na Descrição de Cargo.',
+      'Se vendedor: Entregar e colher assinatura no Regulamento/Política de Premiação e Comissões.'
+    ]},
+    { categoria:'Benefícios (Imediatos & Pós-Experiência)', itens:[
+      'Solicitar/cadastrar Vale-Transporte (VT).',
+      'Cadastrar no iFood Cartão Alimentação / Refeição.',
+      'Agendar Lembrete no Calendário (90 dias): Inclusão no Plano de Saúde.',
+      'Agendar Lembrete no Calendário (90 dias): Inclusão no Plano Odontológico.',
+      'Agendar Lembrete no Calendário (90 dias): Liberação/cadastro no Gympass.'
+    ]},
+    { categoria:'Tecnologia, Acessos & Identidade Visual', itens:[
+      'Criar login e acessos no sistema interno da empresa.',
+      'Se vendedor: Criar perfil e conceder acessos no CRM.',
+      'Criar card de assinatura de e-mail padronizado.',
+      'Definir e aplicar a foto de perfil institucional do WhatsApp.'
+    ]},
+    { categoria:'Estrutura, Treinamentos & NRs', itens:[
+      'Entregar Kit Onboarding de boas-vindas.',
+      'Entregar uniforme e EPIs (com Termo de Responsabilidade assinado).',
+      'Entregar e conferir ferramentas de trabalho (computador, celular, chaves, etc.).',
+      'Agendar/Realizar Treinamentos Iniciais e NRs obrigatórias (se perfil operacional).'
+    ]}
+  ],
+  'Desligamento': [
+    { categoria:'Documentação & Contabilidade Terceirizada', itens:[
+      'Definir o tipo de desligamento (com/sem justa causa, pedido) e data do último dia.',
+      'Verificar a data do último ASO: solicitar ASO Demissional apenas se o último exame tiver mais de 90 dias.',
+      'Notificar a contabilidade terceirizada e enviar o relatório de variáveis (faltas, horas extras, comissões).',
+      'Receber os cálculos das verbas rescisórias da contabilidade e agendar o pagamento.',
+      'Coletar assinaturas nos termos de rescisão e homologação.'
+    ]},
+    { categoria:'Cancelamento de Benefícios & Financeiro', itens:[
+      'Excluir do iFood Cartão Alimentação.',
+      'Cancelar a carga do Vale-Transporte (VT).',
+      'Solicitar o cancelamento/baixa do Plano de Saúde.',
+      'Solicitar o cancelamento/baixa do Plano Odontológico.',
+      'Inativar a conta no Gympass.',
+      'Financeiro: Dar baixa/quitar saldo devedor de empréstimo consignado ou adiantamento interno na rescisão.'
+    ]},
+    { categoria:'Inativação de Acessos & Imagem', itens:[
+      'Bloquear/remover login do sistema interno da empresa.',
+      'Se vendedor: Remover permissões e inativar usuário no CRM (remanejando carteira de clientes).',
+      'Desativar o e-mail corporativo (e a assinatura padronizada).',
+      'Remover acesso ao WhatsApp institucional e trocar a foto de perfil se for aparelho da empresa.'
+    ]},
+    { categoria:'Devolução de Ativos', itens:[
+      'Recolher uniforme.',
+      'Recolher EPIs.',
+      'Recolher e inspecionar ferramentas de trabalho (computador, celular, periféricos, crachá, chaves).'
+    ]}
+  ]
+};
+const ADM_DESL_STATUS_INFO = {
+  andamento: {label:'Em Andamento', badge:'info'},
+  concluido: {label:'Concluído', badge:'good'}
+};
+/* Achata as categorias de um tipo de checklist numa lista plana de itens
+   com id estável (c<índice-categoria>-i<índice-item>) — usada tanto para
+   renderizar quanto para calcular o progresso salvo. */
+function montarItensAdmDesl(tipo){
+  const categorias = ADM_DESL_CHECKLISTS[tipo] || [];
+  const itens = [];
+  categorias.forEach((cat,ci)=>{
+    cat.itens.forEach((label,ii)=> itens.push({id:'c'+ci+'-i'+ii, categoria:cat.categoria, label}));
+  });
+  return itens;
+}
+function lerChecklistsAdmDesl(){
+  try{ const arr = JSON.parse(localStorage.getItem(ADM_DESL_STORAGE_KEY)); return Array.isArray(arr)? arr : []; }catch(e){ return []; }
+}
+function salvarChecklistsAdmDesl(lista){
+  try{ localStorage.setItem(ADM_DESL_STORAGE_KEY, JSON.stringify(lista)); }catch(e){}
+}
+/* ---------------------------------------------------------------------
+   PERSISTÊNCIA COMPARTILHADA (Google Sheets, aba ADM_DESL_CHECKLISTS) —
+   mesmo mecanismo JSONP de FERIAS_REGISTROS/TD_PLANOS_REGISTROS.
+   localStorage (ADM_DESL_STORAGE_KEY) continua como cache local, mas a
+   aba passa a ser a fonte de verdade compartilhada entre todos que
+   acessam o link do dashboard. Upsert por Id do registro (não por
+   matrícula), pois um colaborador pode ter mais de um checklist salvo
+   (ex.: Admissão e, depois, Desligamento). Exclusão é soft-delete
+   (coluna Excluido=TRUE), nunca remoção física da linha.
+   --------------------------------------------------------------------- */
+const ADM_DESL_SHEET_ABA = 'ADM_DESL_CHECKLISTS';
+window.carregarAdmDeslJSONP = function(csvText){
+  const oldScript = document.getElementById('jsonp-admdesl-script-tag');
+  if(oldScript) oldScript.remove();
+  if(!csvText || !csvText.trim()){
+    if(window.__jsonpAdmDeslReject) window.__jsonpAdmDeslReject(new Error('O Apps Script respondeu, mas sem conteúdo (CSV vazio).'));
+    return;
+  }
+  if(window.__jsonpAdmDeslResolve) window.__jsonpAdmDeslResolve(csvText);
+};
+function buscarCSVAdmDeslViaJSONP(url){
+  return new Promise((resolve, reject)=>{
+    const anterior = document.getElementById('jsonp-admdesl-script-tag');
+    if(anterior) anterior.remove();
+    let concluido = false;
+    const limpar = () => { const tag = document.getElementById('jsonp-admdesl-script-tag'); if(tag) tag.remove(); };
+    const timer = setTimeout(()=>{
+      if(concluido) return; concluido = true;
+      window.__jsonpAdmDeslResolve = null; window.__jsonpAdmDeslReject = null;
+      limpar();
+      reject(new Error('Tempo limite excedido ao conectar ao Apps Script (ADM_DESL_CHECKLISTS).'));
+    }, 35000);
+    window.__jsonpAdmDeslResolve = (csv)=>{ if(concluido) return; concluido=true; clearTimeout(timer); window.__jsonpAdmDeslResolve=null; window.__jsonpAdmDeslReject=null; resolve(csv); };
+    window.__jsonpAdmDeslReject = (err)=>{ if(concluido) return; concluido=true; clearTimeout(timer); window.__jsonpAdmDeslResolve=null; window.__jsonpAdmDeslReject=null; limpar(); reject(err); };
+    const sep = url.indexOf('?')===-1?'?':'&';
+    const s = document.createElement('script');
+    s.id = 'jsonp-admdesl-script-tag';
+    s.src = url.trim() + sep + 'aba=' + encodeURIComponent(ADM_DESL_SHEET_ABA) + '&callback=carregarAdmDeslJSONP';
+    s.onerror = () => { if(window.__jsonpAdmDeslReject) window.__jsonpAdmDeslReject(new Error('Falha ao conectar ao Apps Script.')); };
+    document.head.appendChild(s);
+  });
+}
+/* Baixa ADM_DESL_CHECKLISTS e RECONSTRÓI a lista local inteira a partir da
+   planilha (fonte de verdade compartilhada), com fallback silencioso para
+   o cache local se a aba ainda não existir ou a rede falhar. */
+async function sincronizarAdmDeslAutomatica(silent){
+  try{
+    const csvText = await buscarCSVAdmDeslViaJSONP(GSHEET_URL_PADRAO);
+    if(!csvText || !csvText.trim()) return; // aba ainda não existe — segue com o cache local
+    const linhas = parseCSVText(csvText);
+    if(!linhas.length) return;
+    const temColunaId = Object.keys(linhas[0]).some(h=> normalizeHeaderKey(h)==='id');
+    if(!temColunaId){
+      if(!silent) console.warn('ADM_DESL_CHECKLISTS: cabeçalho inesperado na resposta — sincronização ignorada.');
+      return;
+    }
+    const novaLista = [];
+    linhas.forEach(l=>{
+      const id = (l.Id||'').trim();
+      if(!id) return;
+      const excluido = String(l.Excluido||'').trim().toUpperCase()==='TRUE';
+      if(excluido) return; // soft-delete — não entra na Tabela de Acompanhamento de ninguém
+      novaLista.push({
+        id, tipo: l.Tipo||'', colabId: l.ColabId||'', nome: l.Nome||'', cargo: l.Cargo||'', setor: l.Setor||'',
+        dataEvento: l.DataEvento||'', responsavelRH: l.ResponsavelRH||'',
+        itens: parseJSONSeguro(l.ItensJSON, []),
+        progresso: parseJSONSeguro(l.ProgressoJSON, {}),
+        criadoEm: l.CriadoEm||'', atualizadoEm: l.AtualizadoEm||'',
+        salvo: true
+      });
+    });
+    salvarChecklistsAdmDesl(novaLista);
+    if(document.getElementById('admdeslTbody')) renderTabelaAdmDesl();
+  }catch(err){
+    if(!silent) console.warn('ADM_DESL_CHECKLISTS: sincronização automática não disponível agora.', err);
+  }
+}
+window.carregarAdmDeslSalvarJSONP = function(dados){
+  const oldScript = document.getElementById('jsonp-admdesl-save-script-tag');
+  if(oldScript) oldScript.remove();
+  if(!dados){
+    if(window.__jsonpAdmDeslSaveReject) window.__jsonpAdmDeslSaveReject(new Error('Resposta vazia do Apps Script.'));
+    return;
+  }
+  if(window.__jsonpAdmDeslSaveResolve) window.__jsonpAdmDeslSaveResolve(dados);
+};
+function enviarRegistroAdmDeslViaJSONP(registro){
+  return new Promise((resolve, reject)=>{
+    const anterior = document.getElementById('jsonp-admdesl-save-script-tag');
+    if(anterior) anterior.remove();
+    let concluido = false;
+    const limpar = () => { const tag = document.getElementById('jsonp-admdesl-save-script-tag'); if(tag) tag.remove(); };
+    const timer = setTimeout(()=>{
+      if(concluido) return; concluido = true;
+      window.__jsonpAdmDeslSaveResolve = null; window.__jsonpAdmDeslSaveReject = null;
+      limpar();
+      reject(new Error('Tempo limite excedido ao salvar na planilha.'));
+    }, 35000);
+    window.__jsonpAdmDeslSaveResolve = (dados)=>{ if(concluido) return; concluido=true; clearTimeout(timer); window.__jsonpAdmDeslSaveResolve=null; window.__jsonpAdmDeslSaveReject=null; resolve(dados); };
+    window.__jsonpAdmDeslSaveReject = (err)=>{ if(concluido) return; concluido=true; clearTimeout(timer); window.__jsonpAdmDeslSaveResolve=null; window.__jsonpAdmDeslSaveReject=null; limpar(); reject(err); };
+    const json = JSON.stringify(registro);
+    const payload = btoa(unescape(encodeURIComponent(json)));
+    const sep = GSHEET_URL_PADRAO.indexOf('?')===-1?'?':'&';
+    const s = document.createElement('script');
+    s.id = 'jsonp-admdesl-save-script-tag';
+    s.src = GSHEET_URL_PADRAO + sep + 'action=salvarChecklistAdmDesl&payload=' + encodeURIComponent(payload) + '&callback=carregarAdmDeslSalvarJSONP';
+    s.onerror = () => { if(window.__jsonpAdmDeslSaveReject) window.__jsonpAdmDeslSaveReject(new Error('Falha ao conectar ao Apps Script.')); };
+    document.head.appendChild(s);
+  });
+}
+async function salvarChecklistAdmDeslNaPlanilha(registro){
+  try{
+    const resp = await enviarRegistroAdmDeslViaJSONP(registro);
+    if(resp && resp.error) throw new Error(resp.error);
+    return true;
+  }catch(err){
+    console.error('Falha ao salvar checklist de Admissão/Desligamento na planilha compartilhada:', err);
+    alert('⚠️ Esta alteração do checklist foi salva apenas neste navegador — não foi possível gravar na planilha compartilhada agora ('+(err&&err.message?err.message:String(err))+'). Outros usuários do dashboard não verão esta mudança até a sincronização funcionar.');
+    return false;
+  }
+}
+/* Registro atualmente aberto no gerador (recém-gerado ou reaberto pela
+   Tabela de Acompanhamento). `salvo` indica se já existe na lista
+   persistida — controla se marcar um item deve persistir imediatamente. */
+let admdeslAtual = null;
+function novoIdAdmDesl(){ return 'cl_' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function limparFormAdmDesl(){
+  $('admdeslTipo').value = '';
+  $('admdeslColabSelect').value = '';
+  $('admdeslCargo').value = '';
+  $('admdeslSetor').value = '';
+  $('admdeslData').value = fmtDateISO(new Date());
+  $('admdeslResponsavel').value = '';
+}
+/* "🧹 Limpar / Novo Checklist": reseta formulário e documento gerado —
+   mesmo padrão de limparPlanoPdiOnboarding, no módulo de PDI/Onboarding. */
+function limparChecklistAdmDesl(){
+  limparFormAdmDesl();
+  admdeslAtual = null;
+  $('admdeslDoc').style.display = 'none';
+  $('admdeslDoc').innerHTML = '';
+  $('admdeslPlaceholder').style.display = '';
+}
+/* Ao trocar o colaborador selecionado, preenche automaticamente Cargo e
+   Setor — os campos continuam editáveis livremente depois. */
+function autoPreencherCargoSetorAdmDesl(){
+  const mat = $('admdeslColabSelect').value;
+  const emp = mat? rawData.find(e=>e.Matricula===mat) : null;
+  if(emp){
+    $('admdeslCargo').value = emp.Cargo || '';
+    $('admdeslSetor').value = emp.Setor || '';
+  }
+}
+function checklistCheckboxHtmlAdmDesl(registroId, item, progresso){
+  const marcado = !!(progresso && progresso[item.id] && progresso[item.id].done);
+  return `<input type="checkbox" class="training-check adm-desl-check" data-registro-id="${escapeHtml(registroId)}" data-item-id="${escapeHtml(item.id)}" ${marcado?'checked':''}>`;
+}
+function progressoAdmDesl(registro){
+  const itens = registro.itens || [];
+  const progresso = registro.progresso || {};
+  const total = itens.length;
+  const concluidos = itens.filter(i=> progresso[i.id] && progresso[i.id].done).length;
+  const pct = total? Math.round((concluidos/total)*100) : 0;
+  return {total, concluidos, pct};
+}
+function progressoBarraAdmDeslHtml(registro){
+  const p = progressoAdmDesl(registro);
+  const tier = p.pct>=100 ? 'ok' : (p.pct>0 ? 'mid' : '');
+  return `<div class="td-progress-wrap" id="admdeslProgressoAtual">
+    <div class="td-progress-track"><div class="td-progress-fill ${tier}" style="width:${p.pct}%;"></div></div>
+    <div class="hint">Progresso: ${p.concluidos}/${p.total} concluídos (${p.pct}%)</div>
+  </div>`;
+}
+/* Atualiza a barra/legenda de progresso in-place ao marcar/desmarcar um
+   item, sem reconstruir todo o HTML do documento — mesmo padrão de
+   atualizarResumoProgressoAtual (PDI/Onboarding). */
+function atualizarBarraProgressoAdmDeslAtual(){
+  if(!admdeslAtual) return;
+  const el = $('admdeslProgressoAtual'); if(!el) return;
+  const p = progressoAdmDesl(admdeslAtual);
+  const tier = p.pct>=100 ? 'ok' : (p.pct>0 ? 'mid' : '');
+  const fill = el.querySelector('.td-progress-fill'); if(fill){ fill.className = 'td-progress-fill '+tier; fill.style.width = p.pct+'%'; }
+  const hint = el.querySelector('.hint'); if(hint) hint.textContent = `Progresso: ${p.concluidos}/${p.total} concluídos (${p.pct}%)`;
+}
+/* Monta o HTML do documento (mesmas classes .pdi-doc-* do restante do
+   dashboard) a partir de um registro — novo (ainda não salvo) ou já
+   existente, reaberto pela Tabela de Acompanhamento. */
+function renderizarDocAdmDesl(registro){
+  const categorias = [];
+  (registro.itens||[]).forEach(item=>{
+    let bloco = categorias.find(c=>c.categoria===item.categoria);
+    if(!bloco){ bloco = {categoria:item.categoria, itens:[]}; categorias.push(bloco); }
+    bloco.itens.push(item);
+  });
+  const progresso = registro.progresso || {};
+  const secoesHtml = categorias.map((cat,ci)=> `
+    <div class="pdi-doc-section">
+      <h4>${ci+1}. ${escapeHtml(cat.categoria)}</h4>
+      <ul style="list-style:none;padding-left:0;">
+        ${cat.itens.map(item=> `<li style="margin-bottom:6px;"><label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;">
+          <span>${checklistCheckboxHtmlAdmDesl(registro.id, item, progresso)}</span>
+          <span>${escapeHtml(item.label)}</span>
+        </label></li>`).join('')}
+      </ul>
+    </div>`).join('');
+
+  return `<div class="pdi-doc-header">
+      <div class="pdi-doc-title">CHECKLIST DE ${escapeHtml((registro.tipo||'').toUpperCase())}</div>
+      <div class="pdi-doc-grid">
+        <div><b>Colaborador:</b> ${escapeHtml(registro.nome||'—')}</div>
+        <div><b>Cargo:</b> ${escapeHtml(registro.cargo||'—')}</div>
+        <div><b>Setor:</b> ${escapeHtml(registro.setor||'—')}</div>
+        <div><b>Data de Início/Evento:</b> ${registro.dataEvento? toDate(registro.dataEvento).toLocaleDateString('pt-BR') : '—'}</div>
+        <div><b>Responsável pelo RH:</b> ${escapeHtml(registro.responsavelRH||'—')}</div>
+      </div>
+    </div>
+    ${progressoBarraAdmDeslHtml(registro)}
+    ${secoesHtml}`;
+}
+function exibirDocAdmDesl(registro){
+  $('admdeslPlaceholder').style.display = 'none';
+  const doc = $('admdeslDoc');
+  doc.innerHTML = renderizarDocAdmDesl(registro);
+  doc.style.display = 'block';
+}
+/* "🚀 Gerar Checklist": monta um novo registro em memória (id novo,
+   progresso vazio) — só entra na Tabela de Acompanhamento ao clicar em
+   "💾 Salvar Checklist" a seguir. */
+function gerarChecklistAdmDesl(){
+  const tipo = $('admdeslTipo').value;
+  const mat = $('admdeslColabSelect').value;
+  if(!tipo){ alert('Selecione o Tipo de Checklist (Admissão ou Desligamento).'); $('admdeslTipo').focus(); return; }
+  if(!mat){ alert('Selecione o Nome do Colaborador.'); $('admdeslColabSelect').focus(); return; }
+  const emp = rawData.find(e=>e.Matricula===mat);
+  const cargo = $('admdeslCargo').value.trim() || (emp? emp.Cargo : '');
+  const setor = $('admdeslSetor').value.trim() || (emp? emp.Setor : '');
+  const dataEvento = $('admdeslData').value || fmtDateISO(new Date());
+  const responsavelRH = $('admdeslResponsavel').value.trim();
+
+  admdeslAtual = {
+    id: novoIdAdmDesl(),
+    salvo: false,
+    tipo, colabId: mat, nome: emp? emp.Nome : mat, cargo, setor,
+    dataEvento, responsavelRH,
+    itens: montarItensAdmDesl(tipo),
+    progresso: {},
+    criadoEm: new Date().toISOString(),
+    atualizadoEm: new Date().toISOString()
+  };
+  exibirDocAdmDesl(admdeslAtual);
+  $('admdeslDoc').scrollIntoView({behavior:'smooth', block:'start'});
+}
+/* Garante que o colaborador de um checklist salvo esteja selecionável no
+   <select>, mesmo que ele não esteja mais dentro do filtro lateral atual
+   — mesmo padrão de garantirOpcaoColabPdi (PDI/Onboarding). */
+function garantirOpcaoColabAdmDesl(matricula, nomeFallback){
+  const sel = $('admdeslColabSelect'); if(!sel || !matricula) return;
+  const existe = Array.from(sel.options).some(o=>o.value===matricula);
+  if(!existe){
+    const opt = document.createElement('option');
+    opt.value = matricula; opt.textContent = (nomeFallback||matricula)+' (fora do filtro atual)';
+    sel.insertBefore(opt, sel.firstChild);
+  }
+  sel.value = matricula;
+}
+/* "💾 Salvar Checklist": grava (insere ou atualiza) o registro atualmente
+   exibido na lista persistida em localStorage. */
+async function salvarChecklistAtualAdmDesl(){
+  if(!admdeslAtual){ alert('Gere um checklist antes de salvar.'); return; }
+  admdeslAtual.cargo = $('admdeslCargo').value.trim() || admdeslAtual.cargo;
+  admdeslAtual.setor = $('admdeslSetor').value.trim() || admdeslAtual.setor;
+  admdeslAtual.dataEvento = $('admdeslData').value || admdeslAtual.dataEvento;
+  admdeslAtual.responsavelRH = $('admdeslResponsavel').value.trim();
+  admdeslAtual.atualizadoEm = new Date().toISOString();
+
+  const lista = lerChecklistsAdmDesl();
+  const idx = lista.findIndex(r=> r.id===admdeslAtual.id);
+  if(idx>=0) lista[idx] = admdeslAtual; else lista.push(admdeslAtual);
+  salvarChecklistsAdmDesl(lista);
+  admdeslAtual.salvo = true;
+
+  const btn = $('btnAdmDeslSalvar');
+  const original = btn.textContent;
+  btn.textContent = '⏳ Salvando...';
+  btn.disabled = true;
+  // Grava na planilha compartilhada (ADM_DESL_CHECKLISTS) — aguardado aqui
+  // (diferente do fire-and-forget da marcação de itens) porque "Salvar
+  // Checklist" é uma ação explícita: o usuário precisa saber se realmente
+  // ficou visível para os demais usuários do dashboard ou só neste navegador.
+  const ok = await salvarChecklistAdmDeslNaPlanilha(admdeslAtual);
+  btn.textContent = ok ? '✅ Checklist salvo!' : original;
+  setTimeout(()=>{ btn.textContent = original; btn.disabled = false; }, 1600);
+
+  renderTabelaAdmDesl();
+}
+/* Ação "👁️ Ver / Editar" da Tabela de Acompanhamento: repopula o gerador
+   com os dados do checklist salvo e o reabre na tela, com os checkboxes
+   já refletindo o progresso persistido, pronto para continuar a marcação
+   — mesmo padrão de abrirChecklistColaborador (PDI/Onboarding). */
+function abrirChecklistAdmDesl(registroId){
+  const registro = lerChecklistsAdmDesl().find(r=>r.id===registroId);
+  if(!registro) return;
+  admdeslAtual = registro;
+  $('admdeslTipo').value = registro.tipo;
+  garantirOpcaoColabAdmDesl(registro.colabId, registro.nome);
+  $('admdeslCargo').value = registro.cargo||'';
+  $('admdeslSetor').value = registro.setor||'';
+  $('admdeslData').value = registro.dataEvento||'';
+  $('admdeslResponsavel').value = registro.responsavelRH||'';
+  exibirDocAdmDesl(registro);
+  $('admdeslDoc').scrollIntoView({behavior:'smooth', block:'start'});
+}
+/* Exclusão individual de um registro da Tabela de Acompanhamento — ação
+   irreversível, confirmada via confirm() nativo antes de aplicar. */
+function excluirChecklistAdmDesl(registroId){
+  const lista = lerChecklistsAdmDesl();
+  const registro = lista.find(r=>r.id===registroId);
+  if(!registro) return;
+  if(!confirm(`Deseja realmente excluir o checklist de ${registro.tipo} de ${registro.nome}? Esta ação não pode ser desfeita.`)) return;
+  salvarChecklistsAdmDesl(lista.filter(r=>r.id!==registroId));
+  if(admdeslAtual && admdeslAtual.id===registroId) limparChecklistAdmDesl();
+  renderTabelaAdmDesl();
+  // Propaga a exclusão (soft-delete) para a planilha compartilhada — sem
+  // isso, o registro voltaria a aparecer para os demais usuários na
+  // próxima sincronização automática.
+  salvarChecklistAdmDeslNaPlanilha(Object.assign({}, registro, {excluido:true}));
+}
+function textoChecklistAdmDesl(registro){
+  const categorias = [];
+  (registro.itens||[]).forEach(item=>{
+    let bloco = categorias.find(c=>c.categoria===item.categoria);
+    if(!bloco){ bloco = {categoria:item.categoria, itens:[]}; categorias.push(bloco); }
+    bloco.itens.push(item);
+  });
+  const progresso = registro.progresso||{};
+  let txt = `CHECKLIST DE ${(registro.tipo||'').toUpperCase()}\n`;
+  txt += `Colaborador: ${registro.nome||'—'}\n`;
+  txt += `Cargo: ${registro.cargo||'—'} | Setor: ${registro.setor||'—'}\n`;
+  txt += `Data de Início/Evento: ${registro.dataEvento? toDate(registro.dataEvento).toLocaleDateString('pt-BR') : '—'}\n`;
+  txt += `Responsável pelo RH: ${registro.responsavelRH||'—'}\n\n`;
+  categorias.forEach((cat,ci)=>{
+    txt += `${ci+1}. ${cat.categoria}\n`;
+    cat.itens.forEach(item=>{
+      const marcado = progresso[item.id] && progresso[item.id].done;
+      txt += `  [${marcado?'x':' '}] ${item.label}\n`;
+    });
+    txt += '\n';
+  });
+  const p = progressoAdmDesl(registro);
+  txt += `Progresso: ${p.concluidos}/${p.total} concluídos (${p.pct}%)`;
+  return txt;
+}
+function copiarChecklistAdmDesl(){
+  if(!admdeslAtual) return;
+  copyToClipboard(textoChecklistAdmDesl(admdeslAtual));
+  const btn = $('btnAdmDeslCopiar');
+  const original = btn.textContent;
+  btn.textContent = '✅ Copiado!';
+  btn.disabled = true;
+  setTimeout(()=>{ btn.textContent = original; btn.disabled = false; }, 1600);
+}
+function imprimirChecklistAdmDesl(){
+  const docEl = $('admdeslDoc');
+  if(!docEl || docEl.style.display==='none'){ alert('Gere o checklist antes de imprimir.'); return; }
+  const printRoot = document.createElement('div');
+  printRoot.id = 'admdeslPrintRoot';
+  printRoot.innerHTML = docEl.innerHTML;
+  document.body.appendChild(printRoot);
+  document.body.classList.add('printing-admdesl-only');
+  window.print();
+  document.body.classList.remove('printing-admdesl-only');
+  document.body.removeChild(printRoot);
+}
+/* Filtros próprios da Tabela de Acompanhamento (Tipo, Status, busca). */
+let admdeslFiltros = {tipo:'todos', status:'todos', busca:''};
+function statusAdmDesl(registro){
+  const p = progressoAdmDesl(registro);
+  return (p.total>0 && p.pct>=100) ? 'concluido' : 'andamento';
+}
+function filtrarChecklistsAdmDesl(){
+  let lista = lerChecklistsAdmDesl();
+  if(admdeslFiltros.tipo!=='todos') lista = lista.filter(r=> r.tipo===admdeslFiltros.tipo);
+  if(admdeslFiltros.status!=='todos') lista = lista.filter(r=> statusAdmDesl(r)===admdeslFiltros.status);
+  const termo = normalizeHeaderKey(admdeslFiltros.busca||'');
+  if(termo) lista = lista.filter(r=> normalizeHeaderKey([r.nome,r.cargo,r.setor].join(' ')).includes(termo));
+  return lista.slice().sort((a,b)=> new Date(b.atualizadoEm||b.criadoEm) - new Date(a.atualizadoEm||a.criadoEm));
+}
+function linhaAdmDeslHtml(registro){
+  const p = progressoAdmDesl(registro);
+  const status = statusAdmDesl(registro);
+  const info = ADM_DESL_STATUS_INFO[status];
+  const tier = status==='concluido' ? 'ok' : (p.pct>0 ? 'mid' : '');
+  return `<tr>
+    <td>${escapeHtml(registro.nome||'—')}</td>
+    <td>${escapeHtml(registro.cargo||'—')}</td>
+    <td>${escapeHtml(registro.setor||'—')}</td>
+    <td><span class="badge ${registro.tipo==='Admissão'?'good':'critical'}">${escapeHtml(registro.tipo)}</span></td>
+    <td>${registro.dataEvento? toDate(registro.dataEvento).toLocaleDateString('pt-BR') : '—'}</td>
+    <td>${escapeHtml(registro.responsavelRH||'—')}</td>
+    <td>
+      <div class="td-matrix-progress-cell">
+        <div class="td-progress-track"><div class="td-progress-fill ${tier}" style="width:${p.pct}%;"></div></div>
+        <span class="hint">${p.concluidos}/${p.total} (${p.pct}%)</span>
+      </div>
+    </td>
+    <td><span class="badge ${info.badge}">${info.label}</span></td>
+    <td class="no-print" style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button class="btn btn-sm" data-admdeslver="${escapeHtml(registro.id)}" type="button">👁️ Ver / Editar</button>
+      <button class="btn btn-sm btn-danger" data-admdeslexcluir="${escapeHtml(registro.id)}" type="button">🗑️ Excluir</button>
+    </td>
+  </tr>`;
+}
+function renderTabelaAdmDesl(){
+  const lista = filtrarChecklistsAdmDesl();
+  $('admdeslTbody').innerHTML = lista.map(linhaAdmDeslHtml).join('') ||
+    '<tr><td colspan="9" class="hint">Nenhum checklist salvo ainda. Gere e salve um checklist acima para começar o acompanhamento.</td></tr>';
+  $('admdeslCountInfo').textContent = `${lista.length} checklist(s) no filtro atual.`;
+}
+
 /* =====================================================================
    ABA 8 — PDI & ONBOARDING
    ===================================================================== */
@@ -5623,18 +6263,159 @@ function salvarPlanosTD(obj){
   try{ localStorage.setItem(TD_PLANOS_KEY, JSON.stringify(obj)); }catch(e){}
 }
 function slugTraining(s){ return normalizeHeaderKey(s).slice(0,40); }
+/* ---------------------------------------------------------------------
+   PERSISTÊNCIA COMPARTILHADA (Google Sheets, aba TD_PLANOS_REGISTROS) —
+   mesmo mecanismo JSONP de FERIAS_REGISTROS/RS_PARECERES. localStorage
+   (TD_PLANOS_KEY/TD_PROGRESS_KEY) continua como cache local (carregamento
+   instantâneo/offline), mas a aba passa a ser a fonte de verdade
+   compartilhada entre todos que acessam o link do dashboard.
+   --------------------------------------------------------------------- */
+const TD_PLANOS_SHEET_ABA = 'TD_PLANOS_REGISTROS';
+window.carregarTDJSONP = function(csvText){
+  const oldScript = document.getElementById('jsonp-td-script-tag');
+  if(oldScript) oldScript.remove();
+  if(!csvText || !csvText.trim()){
+    if(window.__jsonpTDReject) window.__jsonpTDReject(new Error('O Apps Script respondeu, mas sem conteúdo (CSV vazio).'));
+    return;
+  }
+  if(window.__jsonpTDResolve) window.__jsonpTDResolve(csvText);
+};
+function buscarCSVTDViaJSONP(url){
+  return new Promise((resolve, reject)=>{
+    const anterior = document.getElementById('jsonp-td-script-tag');
+    if(anterior) anterior.remove();
+    let concluido = false;
+    const limpar = () => { const tag = document.getElementById('jsonp-td-script-tag'); if(tag) tag.remove(); };
+    const timer = setTimeout(()=>{
+      if(concluido) return; concluido = true;
+      window.__jsonpTDResolve = null; window.__jsonpTDReject = null;
+      limpar();
+      reject(new Error('Tempo limite excedido ao conectar ao Apps Script (TD_PLANOS_REGISTROS).'));
+    }, 35000);
+    window.__jsonpTDResolve = (csv)=>{ if(concluido) return; concluido=true; clearTimeout(timer); window.__jsonpTDResolve=null; window.__jsonpTDReject=null; resolve(csv); };
+    window.__jsonpTDReject = (err)=>{ if(concluido) return; concluido=true; clearTimeout(timer); window.__jsonpTDResolve=null; window.__jsonpTDReject=null; limpar(); reject(err); };
+    const sep = url.indexOf('?')===-1?'?':'&';
+    const s = document.createElement('script');
+    s.id = 'jsonp-td-script-tag';
+    s.src = url.trim() + sep + 'aba=' + encodeURIComponent(TD_PLANOS_SHEET_ABA) + '&callback=carregarTDJSONP';
+    s.onerror = () => { if(window.__jsonpTDReject) window.__jsonpTDReject(new Error('Falha ao conectar ao Apps Script.')); };
+    document.head.appendChild(s);
+  });
+}
+/* Parse seguro de uma coluna JSON da planilha — nunca deve travar a
+   sincronização por causa de uma célula vazia ou corrompida. */
+function parseJSONSeguro(txt, fallback){
+  try{ const v = JSON.parse(txt||''); return (v===null||v===undefined)? fallback : v; }catch(e){ return fallback; }
+}
+/* Baixa TD_PLANOS_REGISTROS e RECONSTRÓI planos+progresso inteiros a
+   partir da planilha (fonte de verdade compartilhada), com fallback
+   silencioso para o cache local se a aba ainda não existir ou a rede
+   falhar — mesmo espírito de sincronizarFeriasAutomatica. */
+async function sincronizarTDAutomatica(silent){
+  try{
+    const csvText = await buscarCSVTDViaJSONP(GSHEET_URL_PADRAO);
+    if(!csvText || !csvText.trim()) return; // aba ainda não existe — segue com o cache local
+    const linhas = parseCSVText(csvText);
+    if(!linhas.length) return;
+    const temColunaMatricula = Object.keys(linhas[0]).some(h=> normalizeHeaderKey(h)==='matricula');
+    if(!temColunaMatricula){
+      if(!silent) console.warn('TD_PLANOS_REGISTROS: cabeçalho inesperado na resposta — sincronização ignorada.');
+      return;
+    }
+    const novosPlanos = {}, novoProgresso = {};
+    linhas.forEach(l=>{
+      const mat = (l.Matricula||'').trim();
+      if(!mat) return;
+      const excluido = String(l.Excluido||'').trim().toUpperCase()==='TRUE';
+      if(excluido) return; // soft-delete — não entra na Matriz de ninguém
+      novosPlanos[mat] = {
+        tipo: l.Tipo||'', nome: l.Nome||'', cargo: l.Cargo||'', setor: l.Setor||'', unidade: l.Unidade||'',
+        gestor: l.Gestor||'', dataInicio: l.DataInicio||'', familia: l.Familia||'',
+        competencias: parseJSONSeguro(l.CompetenciasJSON, []),
+        trainingItems: parseJSONSeguro(l.TrainingItemsJSON, [])
+      };
+      novoProgresso[mat] = parseJSONSeguro(l.ProgressoJSON, {});
+    });
+    salvarPlanosTD(novosPlanos);
+    salvarProgressoTD(novoProgresso);
+    if(document.getElementById('tdMatrizTbody')) renderTDPanel();
+  }catch(err){
+    if(!silent) console.warn('TD_PLANOS_REGISTROS: sincronização automática não disponível agora.', err);
+  }
+}
+window.carregarTDSalvarJSONP = function(dados){
+  const oldScript = document.getElementById('jsonp-td-save-script-tag');
+  if(oldScript) oldScript.remove();
+  if(!dados){
+    if(window.__jsonpTDSaveReject) window.__jsonpTDSaveReject(new Error('Resposta vazia do Apps Script.'));
+    return;
+  }
+  if(window.__jsonpTDSaveResolve) window.__jsonpTDSaveResolve(dados);
+};
+function enviarRegistroTDViaJSONP(registro){
+  return new Promise((resolve, reject)=>{
+    const anterior = document.getElementById('jsonp-td-save-script-tag');
+    if(anterior) anterior.remove();
+    let concluido = false;
+    const limpar = () => { const tag = document.getElementById('jsonp-td-save-script-tag'); if(tag) tag.remove(); };
+    const timer = setTimeout(()=>{
+      if(concluido) return; concluido = true;
+      window.__jsonpTDSaveResolve = null; window.__jsonpTDSaveReject = null;
+      limpar();
+      reject(new Error('Tempo limite excedido ao salvar na planilha.'));
+    }, 35000);
+    window.__jsonpTDSaveResolve = (dados)=>{ if(concluido) return; concluido=true; clearTimeout(timer); window.__jsonpTDSaveResolve=null; window.__jsonpTDSaveReject=null; resolve(dados); };
+    window.__jsonpTDSaveReject = (err)=>{ if(concluido) return; concluido=true; clearTimeout(timer); window.__jsonpTDSaveResolve=null; window.__jsonpTDSaveReject=null; limpar(); reject(err); };
+    const json = JSON.stringify(registro);
+    const payload = btoa(unescape(encodeURIComponent(json)));
+    const sep = GSHEET_URL_PADRAO.indexOf('?')===-1?'?':'&';
+    const s = document.createElement('script');
+    s.id = 'jsonp-td-save-script-tag';
+    s.src = GSHEET_URL_PADRAO + sep + 'action=salvarPlanoTD&payload=' + encodeURIComponent(payload) + '&callback=carregarTDSalvarJSONP';
+    s.onerror = () => { if(window.__jsonpTDSaveReject) window.__jsonpTDSaveReject(new Error('Falha ao conectar ao Apps Script.')); };
+    document.head.appendChild(s);
+  });
+}
+/* Monta o registro COMPLETO (plano + progresso atuais) de uma matrícula a
+   partir do estado em memória/localStorage — o backend sempre sobrescreve
+   a linha inteira, mesmo padrão de registroFeriasCompletoParaEnvio. */
+function registroTDCompletoParaEnvio(matricula){
+  const plano = lerPlanosTD()[matricula] || {};
+  const progresso = lerProgressoTD()[matricula] || {};
+  return {
+    matricula,
+    tipo: plano.tipo||'', nome: plano.nome||'', cargo: plano.cargo||'', setor: plano.setor||'', unidade: plano.unidade||'',
+    gestor: plano.gestor||'', dataInicio: plano.dataInicio||'', familia: plano.familia||'',
+    competencias: plano.competencias||[], trainingItems: plano.trainingItems||[],
+    progresso, excluido: !!plano.excluido
+  };
+}
+async function salvarRegistroTDNaPlanilha(matricula){
+  try{
+    const resp = await enviarRegistroTDViaJSONP(registroTDCompletoParaEnvio(matricula));
+    if(resp && resp.error) throw new Error(resp.error);
+    return true;
+  }catch(err){
+    console.error('Falha ao salvar plano de T&D na planilha compartilhada:', err);
+    alert('⚠️ Esta alteração de PDI/Onboarding foi salva apenas neste navegador — não foi possível gravar na planilha compartilhada agora ('+(err&&err.message?err.message:String(err))+'). Outros usuários do dashboard não verão esta mudança até a sincronização funcionar.');
+    return false;
+  }
+}
 /* Persiste (ou atualiza) a definição do plano de T&D de um colaborador —
    necessário para a Matriz de Acompanhamento existir de forma independente
    do que está exibido no momento na tela do gerador. Não afeta o progresso
-   já marcado (chave separada em TD_PROGRESS_KEY). */
+   já marcado (chave separada em TD_PROGRESS_KEY). Grava local (instantâneo)
+   e, em paralelo (fire-and-forget), na planilha compartilhada. */
 function registrarPlanoTD(colabId, dados){
   if(!colabId) return;
   const planos = lerPlanosTD();
   planos[colabId] = dados;
   salvarPlanosTD(planos);
+  salvarRegistroTDNaPlanilha(colabId);
 }
 /* Marca/desmarca um item de treinamento como concluído para um colaborador
-   e persiste imediatamente em localStorage (hr_td_progress_v1). */
+   e persiste imediatamente em localStorage (hr_td_progress_v1) + planilha
+   compartilhada (fire-and-forget, não trava o clique do checkbox). */
 function marcarTreinamento(colabId, trainingId, done, horas){
   if(!colabId) return;
   const progresso = lerProgressoTD();
@@ -5645,6 +6426,7 @@ function marcarTreinamento(colabId, trainingId, done, horas){
     delete progresso[colabId][trainingId];
   }
   salvarProgressoTD(progresso);
+  salvarRegistroTDNaPlanilha(colabId);
 }
 function montarTrainingItemsOnboarding(linhas){
   return linhas.map(l=> ({id:'sem'+l.semana, label:'Semana '+l.semana+' — '+l.atividades, horas:TD_HORAS_POR_SEMANA_ONBOARDING}));
@@ -5710,6 +6492,7 @@ function calcularMatrizTD(){
   Object.keys(planos).forEach(colabId=>{
     if(!matriculasNoFiltro.has(colabId)) return;
     const plano = planos[colabId];
+    if(plano.excluido) return; // soft-delete (compartilhado via TD_PLANOS_REGISTROS)
     const emp = rawData.find(e=>e.Matricula===colabId);
     const items = plano.trainingItems || [];
     const prog = progresso[colabId] || {};
@@ -5908,6 +6691,12 @@ function excluirPlanoTD(colabId){
   const nome = plano.nome || colabId;
   if(!confirm(`Deseja realmente remover o plano de treinamento de ${nome}? Esta ação limpará o progresso e o checklist salvo deste colaborador.`)) return;
 
+  // Captura o registro completo ANTES de apagar localmente, para poder
+  // propagar o soft-delete (Excluido=TRUE) com todos os dados para a
+  // planilha compartilhada — depois de apagado localmente não há mais
+  // como reconstruir esses campos.
+  const registroExcluido = Object.assign(registroTDCompletoParaEnvio(colabId), {excluido:true});
+
   delete planos[colabId];
   salvarPlanosTD(planos);
   const progresso = lerProgressoTD();
@@ -5922,6 +6711,13 @@ function excluirPlanoTD(colabId){
     $('pdiOnboardingPlaceholder').style.display = '';
   }
   renderTDPanel();
+  // Propaga a exclusão (soft-delete) para a planilha compartilhada — sem
+  // isso, o registro voltaria a aparecer para os demais usuários na
+  // próxima sincronização automática.
+  enviarRegistroTDViaJSONP(registroExcluido).catch(err=>{
+    console.error('Falha ao propagar exclusão de plano de T&D para a planilha compartilhada:', err);
+    alert('⚠️ O plano foi removido apenas neste navegador — não foi possível propagar a exclusão para a planilha compartilhada agora. Ele pode reaparecer na próxima sincronização. Tente excluir novamente em instantes.');
+  });
 }
 /* Renderiza o painel completo de Gestão de T&D da aba PDI & Onboarding: os
    4 KPIs do topo, os 2 gráficos analíticos, a Matriz de Acompanhamento
@@ -8891,7 +9687,7 @@ function wireEvents(){
   $('btnToggleTheme').addEventListener('click', ()=> aplicarTema(currentTheme === 'dark' ? 'light' : 'dark', {persist:true, rerender:true}));
   $('btnPrint').addEventListener('click', ()=> window.print());
   $('btnLoadMock').addEventListener('click', loadMockData);
-  $('btnLoadGsheet').addEventListener('click', ()=> { atualizarViaGoogleSheets(); sincronizarPesquisaInternaAutomatica(true); sincronizarFeriasAutomatica(true); });
+  $('btnLoadGsheet').addEventListener('click', ()=> { atualizarViaGoogleSheets(); sincronizarPesquisaInternaAutomatica(true); sincronizarFeriasAutomatica(true); sincronizarTDAutomatica(true); sincronizarAdmDeslAutomatica(true); });
   $('btnTestGsheetLink').addEventListener('click', ()=>{
     const url = $('gsheetUrl').value.trim();
     if(!url){ setDsMsg('Informe o link da planilha antes de testar.', true); return; }
@@ -9000,6 +9796,47 @@ function wireEvents(){
 
   $('btnCalcTurnover').addEventListener('click', calcularTurnoverPeriodo);
   $('btnCalcManual').addEventListener('click', calcularManual);
+
+  // Gerador & Controle de Checklist de Admissão e Desligamento
+  $('admdeslColabSelect').addEventListener('change', autoPreencherCargoSetorAdmDesl);
+  $('btnAdmDeslGerar').addEventListener('click', gerarChecklistAdmDesl);
+  $('btnAdmDeslLimpar').addEventListener('click', limparChecklistAdmDesl);
+  $('btnAdmDeslSalvar').addEventListener('click', salvarChecklistAtualAdmDesl);
+  $('btnAdmDeslCopiar').addEventListener('click', copiarChecklistAdmDesl);
+  $('btnAdmDeslImprimir').addEventListener('click', imprimirChecklistAdmDesl);
+  // Checklist interativo — delegação de evento no container do documento
+  // gerado, pois os checkboxes são recriados a cada geração/reabertura.
+  $('admdeslDoc').addEventListener('change', e=>{
+    const cb = e.target.closest('.adm-desl-check');
+    if(!cb || !admdeslAtual) return;
+    if(!admdeslAtual.progresso) admdeslAtual.progresso = {};
+    if(cb.checked) admdeslAtual.progresso[cb.dataset.itemId] = {done:true, concluidoEm: fmtDateISO(new Date())};
+    else delete admdeslAtual.progresso[cb.dataset.itemId];
+    admdeslAtual.atualizadoEm = new Date().toISOString();
+    atualizarBarraProgressoAdmDeslAtual();
+    // Se o checklist já estiver salvo na Tabela de Acompanhamento, a
+    // marcação persiste imediatamente — sem precisar clicar em "Salvar
+    // Checklist" de novo só para registrar um item (mesmo comportamento
+    // do checklist de T&D do PDI/Onboarding).
+    if(admdeslAtual.salvo){
+      const lista = lerChecklistsAdmDesl();
+      const idx = lista.findIndex(r=>r.id===admdeslAtual.id);
+      if(idx>=0){ lista[idx] = admdeslAtual; salvarChecklistsAdmDesl(lista); renderTabelaAdmDesl(); }
+      // Propaga a marcação para a planilha compartilhada (fire-and-forget,
+      // não trava o clique do checkbox) — assim os demais usuários do
+      // dashboard veem o item marcado/desmarcado na próxima sincronização.
+      salvarChecklistAdmDeslNaPlanilha(admdeslAtual);
+    }
+  });
+  $('admdeslFiltroTipo').addEventListener('change', ()=>{ admdeslFiltros.tipo = $('admdeslFiltroTipo').value; renderTabelaAdmDesl(); });
+  $('admdeslFiltroStatus').addEventListener('change', ()=>{ admdeslFiltros.status = $('admdeslFiltroStatus').value; renderTabelaAdmDesl(); });
+  $('admdeslBusca').addEventListener('input', ()=>{ admdeslFiltros.busca = $('admdeslBusca').value; renderTabelaAdmDesl(); });
+  $('admdeslTbody').addEventListener('click', e=>{
+    const btnVer = e.target.closest('[data-admdeslver]');
+    if(btnVer){ abrirChecklistAdmDesl(btnVer.dataset.admdeslver); return; }
+    const btnDel = e.target.closest('[data-admdeslexcluir]');
+    if(btnDel){ excluirChecklistAdmDesl(btnDel.dataset.admdeslexcluir); return; }
+  });
 
   $('pdiTipo').addEventListener('change', atualizarVisibilidadePdiTipo);
   $('pdiColabSelect').addEventListener('change', ()=>{
@@ -9391,6 +10228,7 @@ function init(){
   loadSurveyConfig();
   loadRsVagas();
   if($('rsParecerData')) $('rsParecerData').value = fmtDateISO(new Date());
+  if($('admdeslData')) $('admdeslData').value = fmtDateISO(new Date());
   loadEpiState();
   loadVacationState();
   carregarDadosIniciais();
