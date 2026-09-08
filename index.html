@@ -1435,6 +1435,15 @@ tbody tr:hover{background:var(--surface-2);}
                 <option value="3">Acima da Expectativa</option>
               </select>
             </div>
+            <div class="form-field" style="margin-bottom:12px;">
+              <label>Prontidão para Sucessão (linha superior)</label>
+              <select id="nbProntidao" style="width:100%;">
+                <option value="">— Não avaliado / Não se aplica —</option>
+                <option value="0-6">Pronto Agora (0–6 meses)</option>
+                <option value="1-2">Pronto em Médio Prazo (1–2 anos)</option>
+                <option value="3+">Pronto em Longo Prazo (3+ anos)</option>
+              </select>
+            </div>
             <button class="btn btn-primary" style="width:100%;" id="btnPosicionar">Posicionar</button>
             <div class="hint">Os colaboradores exibidos consideram os filtros globais e status Ativo.</div>
 
@@ -1448,6 +1457,37 @@ tbody tr:hover{background:var(--surface-2);}
           <div class="card section-gap">
             <h3>Distribuição por Quadrante</h3>
             <div class="chart-box sm"><canvas id="chartNineBox"></canvas></div>
+          </div>
+
+          <div class="grid grid-3 section-gap" style="align-items:stretch;">
+            <div class="card">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                <h3 style="margin:0;">📈 Evolução por PDI</h3>
+                <select id="nb9boxEvolModo" style="max-width:180px;">
+                  <option value="grupo">Saldo do Grupo</option>
+                  <option value="individual">Colaborador Individual</option>
+                </select>
+              </div>
+              <div class="panel-sub" style="margin-bottom:8px;">Movimentação de quadrante entre ciclos de avaliação, a partir do histórico de posicionamentos na Matriz 9Box.</div>
+              <div id="nb9boxEvolIndividualWrap" style="display:none;margin-bottom:8px;">
+                <select id="nb9boxEvolColab" style="width:100%;"></select>
+              </div>
+              <div class="chart-box sm"><canvas id="chartNineboxEvolucao"></canvas></div>
+              <div class="hint" id="nb9boxEvolHint" style="margin-top:8px;"></div>
+            </div>
+
+            <div class="card">
+              <h3 style="margin:0 0 6px;">🧭 Prontidão para Sucessão</h3>
+              <div class="panel-sub" style="margin-bottom:8px;">Pipeline de liderança: colaboradores da linha superior (Comportamento Alto — Destaques, Aprimorar e Desenvolver Técnica) por Setor, cruzados com o prazo de prontidão informado no painel ao lado.</div>
+              <div class="chart-box sm"><canvas id="chartNineboxSucessao"></canvas></div>
+              <div class="hint" id="nb9boxSucessaoHint" style="margin-top:8px;"></div>
+            </div>
+
+            <div class="card">
+              <h3 style="margin:0 0 6px;">🎯 Dispersão de Calibração</h3>
+              <div class="panel-sub" style="margin-bottom:8px;">Notas contínuas (0–10) aproximadas a partir dos níveis 1–3 de Desempenho x Comportamento, com pequena variação para separar colaboradores do mesmo nível e revelar zonas de fronteira entre quadrantes.</div>
+              <div class="chart-box sm"><canvas id="chartNineboxScatter"></canvas></div>
+            </div>
           </div>
         </div>
       </section>
@@ -4236,6 +4276,43 @@ function loadNineboxFromStorage(){
   try{ const raw = localStorage.getItem('hr_9box_v1'); nineboxAssignments = raw? JSON.parse(raw) : {}; }catch(e){ nineboxAssignments = {}; }
 }
 function saveNinebox(){ try{ localStorage.setItem('hr_9box_v1', JSON.stringify(nineboxAssignments)); }catch(e){} }
+
+/* =====================================================================
+   HISTÓRICO DE MOVIMENTAÇÃO 9BOX (Evolução por PDI)
+   A Matriz 9Box guarda apenas a posição ATUAL de cada colaborador
+   (nineboxAssignments é sobrescrito a cada novo posicionamento — não há
+   ciclos/anos anteriores registrados em nenhuma aba). Para viabilizar o
+   gráfico de Evolução por PDI sem inventar dados que não existem, um
+   snapshot {perf,pot} é gravado por colaborador a cada ano em que ele for
+   (re)posicionado na Matriz — a partir de agora, cada novo ciclo de
+   avaliação passa a compor o histórico real e o "saldo de movimentação"
+   entre anos passa a ser calculado automaticamente. Na primeira carga (sem
+   nenhum histórico ainda), o snapshot do ano corrente é semeado a partir
+   das posições já existentes, para que o gráfico não comece vazio.
+   --------------------------------------------------------------------- */
+let nineboxHistorico = {};
+function loadNineboxHistoricoFromStorage(){
+  try{ const raw = localStorage.getItem('hr_9box_historico_v1'); nineboxHistorico = raw? JSON.parse(raw) : {}; }catch(e){ nineboxHistorico = {}; }
+}
+function saveNineboxHistorico(){ try{ localStorage.setItem('hr_9box_historico_v1', JSON.stringify(nineboxHistorico)); }catch(e){} }
+function registrarHistoricoNinebox(mat, perf, pot){
+  if(!mat) return;
+  const ano = String(new Date().getFullYear());
+  if(!nineboxHistorico[mat]) nineboxHistorico[mat] = {};
+  nineboxHistorico[mat][ano] = {perf:String(perf), pot:String(pot)};
+  saveNineboxHistorico();
+}
+function seedNineboxHistoricoSeVazio(){
+  if(Object.keys(nineboxHistorico).length) return;
+  const ano = String(new Date().getFullYear());
+  Object.entries(nineboxAssignments).forEach(([mat,v])=>{
+    nineboxHistorico[mat] = { [ano]: {perf:String(v.perf), pot:String(v.pot)} };
+  });
+  if(Object.keys(nineboxHistorico).length) saveNineboxHistorico();
+}
+/* Score ordinal (2..6) usado só para comparar Subiu/Estagnou/Caiu entre
+   ciclos — soma simples de Desempenho + Comportamento (1..3 cada). */
+function nb9boxScoreOrdinal(perf, pot){ return Number(perf||0) + Number(pot||0); }
 function buildNineboxGrid(){
   const grid = $('nineboxGrid'); grid.innerHTML='';
   const yAxis = document.createElement('div'); yAxis.className='nb-axis-y'; yAxis.textContent='COMPORTAMENTO (Abaixo → Acima da Expectativa)';
@@ -4340,6 +4417,10 @@ const CHART_DATA_LABELS_PLUGIN = {
   }
 };
 function renderNineBox(){
+  // Reforço de sigilo: nenhum nome/posição de colaborador deve ser escrito
+  // no DOM (nem em innerHTML oculto, nem em canvas) antes do login (01/1987)
+  // ser confirmado — ver tentarNb9boxLogin()/bloquearNb9box().
+  if(!nb9boxAutenticado) return;
   refreshEmployeeSelects();
   const ativosMat = new Set(getFilteredData().filter(isAtivo).map(e=>e.Matricula));
   for(let pot=1; pot<=3; pot++){
@@ -4362,12 +4443,216 @@ function renderNineBox(){
     plugins:[CHART_DATA_LABELS_PLUGIN],
     options:{responsive:true,maintainAspectRatio:false, layout:{padding:{top:18}}, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, ticks:{stepSize:1}, grid:{color:gridColor()}}, x:{grid:{display:false}, ticks:{autoSkip:false, maxRotation:30}}}}},
     {labels, datasets:[{label:'Colaboradores', data:counts, color:COR.c1}]});
+
+  renderNineboxEvolucao();
+  renderNineboxSucessao();
+  renderNineboxScatter();
 }
+
+/* =====================================================================
+   GRÁFICO 1 — EVOLUÇÃO POR PDI (Histórico de Movimentação)
+   ===================================================================== */
+function nb9boxAnosDisponiveis(){
+  const anos = new Set();
+  Object.values(nineboxHistorico).forEach(porAno=> Object.keys(porAno).forEach(a=> anos.add(a)));
+  return Array.from(anos).sort();
+}
+function renderNineboxEvolucaoGrupo(){
+  const anos = nb9boxAnosDisponiveis();
+  const hint = $('nb9boxEvolHint');
+  if(anos.length < 2){
+    upsertChart('chartNineboxEvolucao', {type:'line', data:{labels:[], datasets:[]}, options:{responsive:true,maintainAspectRatio:false}}, {labels:[], datasets:[]});
+    if(hint) hint.textContent = 'Ainda há apenas 1 ciclo de avaliação registrado (' + (anos[0]||new Date().getFullYear()) + '). O saldo de movimentação (Subiram/Estagnados/Caíram) passa a ser calculado automaticamente a partir do próximo ciclo em que os colaboradores forem reposicionados na Matriz 9Box.';
+    return;
+  }
+  const labels = anos.slice(1);
+  const subiram = [], estagnaram = [], cairam = [];
+  for(let i=1;i<anos.length;i++){
+    const anoAnt = anos[i-1], anoAtual = anos[i];
+    let s=0,e=0,c=0;
+    Object.values(nineboxHistorico).forEach(porAno=>{
+      const a = porAno[anoAnt], b = porAno[anoAtual];
+      if(!a || !b) return;
+      const scoreA = nb9boxScoreOrdinal(a.perf,a.pot), scoreB = nb9boxScoreOrdinal(b.perf,b.pot);
+      if(scoreB>scoreA) s++; else if(scoreB<scoreA) c++; else e++;
+    });
+    subiram.push(s); estagnaram.push(e); cairam.push(c);
+  }
+  if(hint) hint.textContent = 'Saldo de movimentação de quadrante do Grupo entre ciclos (' + anos[0] + '–' + anos[anos.length-1] + '), com base nos reposicionamentos registrados na Matriz 9Box.';
+  upsertChart('chartNineboxEvolucao', {type:'line',
+    data:{labels, datasets:[
+      {label:'Subiram de Quadrante', data:subiram, borderColor:COR.good, backgroundColor:COR.good+'33', fill:true, tension:.3, stack:'mov'},
+      {label:'Estagnados', data:estagnaram, borderColor:COR.muted, backgroundColor:COR.muted+'33', fill:true, tension:.3, stack:'mov'},
+      {label:'Caíram de Quadrante', data:cairam, borderColor:COR.critical, backgroundColor:COR.critical+'33', fill:true, tension:.3, stack:'mov'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,position:'bottom'}},
+      scales:{y:{beginAtZero:true, stacked:true, ticks:{stepSize:1}, grid:{color:gridColor()}}, x:{stacked:true, grid:{display:false}}}}},
+    {labels, datasets:[{label:'Subiram', data:subiram, color:COR.good},{label:'Estagnados', data:estagnaram, color:COR.muted},{label:'Caíram', data:cairam, color:COR.critical}]});
+}
+function renderNineboxEvolucaoIndividual(){
+  const sel = $('nb9boxEvolColab');
+  const mat = sel ? sel.value : '';
+  const hint = $('nb9boxEvolHint');
+  const historicoColab = nineboxHistorico[mat] || {};
+  const anos = Object.keys(historicoColab).sort();
+  if(!mat || anos.length < 1){
+    upsertChart('chartNineboxEvolucao', {type:'line', data:{labels:[], datasets:[]}, options:{responsive:true,maintainAspectRatio:false}}, {labels:[], datasets:[]});
+    if(hint) hint.textContent = 'Selecione um colaborador com histórico de posicionamento na Matriz 9Box.';
+    return;
+  }
+  const emp = rawData.find(e=>e.Matricula===mat);
+  const scores = anos.map(a=> nb9boxScoreOrdinal(historicoColab[a].perf, historicoColab[a].pot));
+  const quadrantes = anos.map(a=> (NB_LABELS[historicoColab[a].pot]||{})[historicoColab[a].perf] || '');
+  if(hint) hint.textContent = anos.length < 2
+    ? 'Apenas 1 ciclo registrado para ' + (emp?emp.Nome:mat) + ' até o momento.'
+    : 'Evolução de ' + (emp?emp.Nome:mat) + ' entre ' + anos[0] + ' e ' + anos[anos.length-1] + ' (soma Desempenho + Comportamento, escala 2–6).';
+  upsertChart('chartNineboxEvolucao', {type:'line',
+    data:{labels:anos, datasets:[{label:(emp?emp.Nome:mat), data:scores, borderColor:COR.accent, backgroundColor:COR.accent+'33', fill:true, tension:.3, pointRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}, tooltip:{callbacks:{label(ctx){ return 'Quadrante: '+(quadrantes[ctx.dataIndex]||'—')+' (score '+ctx.parsed.y+')'; }}}},
+      scales:{y:{min:1.5,max:6.5, ticks:{stepSize:1}, grid:{color:gridColor()}}, x:{grid:{display:false}}}}},
+    {labels:anos, datasets:[{label:'Score', data:scores, color:COR.accent}]});
+}
+function renderNineboxEvolucao(){
+  const modo = $('nb9boxEvolModo') ? $('nb9boxEvolModo').value : 'grupo';
+  if(modo === 'individual'){
+    const sel = $('nb9boxEvolColab');
+    if(sel){
+      const atual = sel.value;
+      const opts = Object.keys(nineboxHistorico).sort((a,b)=>{
+        const na = rawData.find(e=>e.Matricula===a), nb = rawData.find(e=>e.Matricula===b);
+        return (na?na.Nome:a).localeCompare(nb?nb.Nome:b, 'pt-BR');
+      }).map(mat=>{
+        const emp = rawData.find(e=>e.Matricula===mat);
+        return `<option value="${escapeHtml(mat)}">${escapeHtml(emp?emp.Nome:mat)}</option>`;
+      }).join('');
+      sel.innerHTML = opts || '<option value="">Nenhum colaborador com histórico</option>';
+      if(atual) sel.value = atual;
+    }
+    renderNineboxEvolucaoIndividual();
+  } else {
+    renderNineboxEvolucaoGrupo();
+  }
+}
+
+/* =====================================================================
+   GRÁFICO 2 — PRONTIDÃO PARA SUCESSÃO (Pipeline de Liderança)
+   ===================================================================== */
+const NB9BOX_PRONTIDAO_LABELS = {'0-6':'Pronto Agora (0–6m)', '1-2':'Médio Prazo (1–2a)', '3+':'Longo Prazo (3a+)', '':'Não avaliado'};
+function renderNineboxSucessao(){
+  const ativosMat = new Set(getFilteredData().filter(isAtivo).map(e=>e.Matricula));
+  const candidatos = Object.entries(nineboxAssignments).filter(([mat,v])=> String(v.pot)==='3' && ativosMat.has(mat));
+  const porSetor = {};
+  candidatos.forEach(([mat,v])=>{
+    const emp = rawData.find(e=>e.Matricula===mat);
+    const setor = (emp && emp.Setor) ? emp.Setor : 'Não informado';
+    if(!porSetor[setor]) porSetor[setor] = {'0-6':0,'1-2':0,'3+':0,'':0};
+    const p = ['0-6','1-2','3+'].includes(v.prontidao) ? v.prontidao : '';
+    porSetor[setor][p]++;
+  });
+  const setores = Object.keys(porSetor).sort((a,b)=> porSetor[b]['0-6']+porSetor[b]['1-2']+porSetor[b]['3+']+porSetor[b][''] - (porSetor[a]['0-6']+porSetor[a]['1-2']+porSetor[a]['3+']+porSetor[a]['']));
+  const dsPronto = setores.map(s=>porSetor[s]['0-6']);
+  const dsMedio  = setores.map(s=>porSetor[s]['1-2']);
+  const dsLongo  = setores.map(s=>porSetor[s]['3+']);
+  const dsNA     = setores.map(s=>porSetor[s]['']);
+  const hint = $('nb9boxSucessaoHint');
+  if(hint){
+    hint.textContent = candidatos.length
+      ? candidatos.length + ' colaborador(es) na linha superior (Comportamento Alto) do 9Box. Defina a prontidão de cada um no painel "Posicionar Colaborador".'
+      : 'Nenhum colaborador posicionado na linha superior (Comportamento Alto) do 9Box ainda.';
+  }
+  upsertChart('chartNineboxSucessao', {type:'bar',
+    data:{labels:setores, datasets:[
+      {label:NB9BOX_PRONTIDAO_LABELS['0-6'], data:dsPronto, backgroundColor:COR.good, stack:'s'},
+      {label:NB9BOX_PRONTIDAO_LABELS['1-2'], data:dsMedio, backgroundColor:COR.c3, stack:'s'},
+      {label:NB9BOX_PRONTIDAO_LABELS['3+'], data:dsLongo, backgroundColor:COR.c7, stack:'s'},
+      {label:NB9BOX_PRONTIDAO_LABELS[''], data:dsNA, backgroundColor:COR.muted, stack:'s'}
+    ]},
+    options:{indexAxis:'y', responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,position:'bottom'}},
+      scales:{x:{beginAtZero:true, stacked:true, ticks:{stepSize:1}, grid:{color:gridColor()}}, y:{stacked:true, grid:{display:false}}}}},
+    {labels:setores, datasets:[
+      {label:NB9BOX_PRONTIDAO_LABELS['0-6'], data:dsPronto, color:COR.good},
+      {label:NB9BOX_PRONTIDAO_LABELS['1-2'], data:dsMedio, color:COR.c3},
+      {label:NB9BOX_PRONTIDAO_LABELS['3+'], data:dsLongo, color:COR.c7},
+      {label:NB9BOX_PRONTIDAO_LABELS[''], data:dsNA, color:COR.muted}
+    ]});
+}
+
+/* =====================================================================
+   GRÁFICO 3 — DISPERSÃO DE CALIBRAÇÃO (Scatter contínuo 0–10)
+   Não existe nota contínua real (0–10) na base — apenas os 3 níveis de
+   Desempenho/Comportamento usados na Matriz 9Box. Cada colaborador é
+   posicionado dentro do terço (0–3,33 / 3,33–6,67 / 6,67–10) correspondente
+   ao seu nível, com uma variação pequena e determinística (semente = a
+   própria matrícula, via seededRandom já usado no gerador de mock data) só
+   para não sobrepor pontos do mesmo nível — nunca cruza para o terço/nível
+   vizinho, então a leitura por quadrante permanece fiel aos dados reais.
+   ===================================================================== */
+function hashMatriculaSeed(mat){
+  let h = 0; const s = String(mat||'');
+  for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) >>> 0; }
+  return h || 1;
+}
+function nb9boxCoordContinua(bucket, seed){
+  const b = Math.max(1, Math.min(3, Number(bucket)||2));
+  const lo = (b-1)*10/3, hi = b*10/3;
+  const margem = (hi-lo)*0.18;
+  const rnd = seededRandom(seed)();
+  return +(lo + margem + rnd*((hi-lo)-2*margem)).toFixed(2);
+}
+const NB9BOX_LINHAS_QUADRANTE_PLUGIN = {
+  id: 'nb9boxLinhasQuadrantes',
+  beforeDatasetsDraw(chart){
+    const {ctx, chartArea, scales} = chart;
+    if(!chartArea || !scales || !scales.x || !scales.y) return;
+    ctx.save();
+    ctx.strokeStyle = gridColor();
+    ctx.setLineDash([4,4]);
+    ctx.lineWidth = 1;
+    [10/3, 20/3].forEach(v=>{
+      const xp = scales.x.getPixelForValue(v);
+      ctx.beginPath(); ctx.moveTo(xp, chartArea.top); ctx.lineTo(xp, chartArea.bottom); ctx.stroke();
+      const yp = scales.y.getPixelForValue(v);
+      ctx.beginPath(); ctx.moveTo(chartArea.left, yp); ctx.lineTo(chartArea.right, yp); ctx.stroke();
+    });
+    ctx.restore();
+  }
+};
+function renderNineboxScatter(){
+  const ativosMat = new Set(getFilteredData().filter(isAtivo).map(e=>e.Matricula));
+  const pontos = Object.entries(nineboxAssignments).filter(([mat])=>ativosMat.has(mat)).map(([mat,v])=>{
+    const emp = rawData.find(e=>e.Matricula===mat);
+    const seedBase = hashMatriculaSeed(mat);
+    const x = nb9boxCoordContinua(v.perf, seedBase+1);
+    const y = nb9boxCoordContinua(v.pot, seedBase+7);
+    return {x, y, nome: emp?emp.Nome:mat, cargo: (emp&&emp.Cargo)?emp.Cargo:'—', quadrante: (NB_LABELS[v.pot]||{})[v.perf] || '—'};
+  });
+  upsertChart('chartNineboxScatter', {type:'scatter',
+    data:{datasets:[{label:'Colaboradores', data:pontos, backgroundColor:COR.accent, borderColor:COR.accent, pointRadius:5, pointHoverRadius:7}]},
+    plugins:[NB9BOX_LINHAS_QUADRANTE_PLUGIN],
+    options:{responsive:true,maintainAspectRatio:false,
+      scales:{
+        x:{min:0,max:10, title:{display:true,text:'Desempenho (0–10)',color:textColor()}, grid:{color:gridColor()}},
+        y:{min:0,max:10, title:{display:true,text:'Comportamento (0–10)',color:textColor()}, grid:{color:gridColor()}}
+      },
+      plugins:{legend:{display:false}, tooltip:{callbacks:{
+        title(items){ return items.length? items[0].raw.nome : ''; },
+        label(item){ const p=item.raw; return ['Cargo: '+p.cargo, 'Notas: '+p.x.toFixed(1)+' × '+p.y.toFixed(1), 'Quadrante: '+p.quadrante]; }
+      }}}}},
+    {labels:pontos.map(p=>p.nome), datasets:[{label:'Score (Desempenho+Comportamento)', data:pontos.map(p=>+(p.x+p.y).toFixed(1)), color:COR.accent}]});
+}
+
 function posicionarColaborador(){
   const mat = $('nbEmployeeSelect').value;
   if(!mat){ return; }
-  nineboxAssignments[mat] = {perf: $('nbPerf').value, pot: $('nbPot').value};
-  saveNinebox(); renderNineBox();
+  const perf = $('nbPerf').value, pot = $('nbPot').value;
+  const prontidao = $('nbProntidao') ? $('nbProntidao').value : '';
+  nineboxAssignments[mat] = {perf, pot, prontidao};
+  saveNinebox();
+  registrarHistoricoNinebox(mat, perf, pot);
+  renderNineBox();
 }
 function gerar9BoxActionPlan(){
   const out = $('nineboxActionOutput');
@@ -10271,6 +10556,12 @@ function wireEvents(){
     const btn = e.target.closest('button[data-removenb]'); if(!btn) return;
     delete nineboxAssignments[btn.dataset.removenb]; saveNinebox(); renderNineBox();
   });
+  $('nb9boxEvolModo').addEventListener('change', ()=>{
+    const individual = $('nb9boxEvolModo').value === 'individual';
+    $('nb9boxEvolIndividualWrap').style.display = individual ? '' : 'none';
+    renderNineboxEvolucao();
+  });
+  $('nb9boxEvolColab').addEventListener('change', renderNineboxEvolucaoIndividual);
 
   $('surveyForm').addEventListener('submit', submitSurvey);
   $('btnCopyJSON').addEventListener('click', ()=> copyToClipboard(JSON.stringify(gatherSurveyAnswers(), null, 2)));
@@ -10750,6 +11041,8 @@ function init(){
   wireEvents();
   loadTasksFromStorage();
   loadNineboxFromStorage();
+  loadNineboxHistoricoFromStorage();
+  seedNineboxHistoricoSeVazio();
   loadSurveyConfig();
   loadRsVagas();
   if($('rsParecerData')) $('rsParecerData').value = fmtDateISO(new Date());
