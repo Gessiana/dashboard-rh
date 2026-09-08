@@ -501,6 +501,22 @@ tbody tr:hover{background:var(--surface-2);}
 .nb-chip button{border:none;background:transparent;color:var(--critical);cursor:pointer;font-weight:800;font-size:11px;line-height:1;}
 .nb-panel{width:290px;flex-shrink:0;}
 
+/* =========================================================
+   BLOQUEIO DE ACESSO — MATRIZ 9BOX (Login/Senha)
+   Overlay confinado à própria seção (#tab-ninebox, position:relative),
+   nunca ao viewport inteiro — assim a navegação superior (abas) continua
+   clicável mesmo com a Matriz bloqueada, e trocar de aba automaticamente
+   esconde o overlay junto com o resto da seção (.tab-panel só fica
+   visível quando tem a classe .active). O cartão de login em si usa
+   position:fixed para permanecer centralizado na tela mesmo que a seção
+   tenha mais altura que o viewport (usuário com scroll).
+   ========================================================= */
+#tab-ninebox{position:relative;}
+.nb9box-lock-overlay{position:absolute;inset:0;background:rgba(15,23,42,0.72);z-index:400;border-radius:var(--radius-lg);}
+.nb9box-lock-overlay.hidden{display:none;}
+.nb9box-lock-box{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:401;background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);width:100%;max-width:320px;padding:26px 24px;border:1px solid var(--border-strong);}
+.nb9box-lock-title{font-weight:800;font-size:13.5px;color:var(--ink);margin-bottom:18px;text-align:center;letter-spacing:.2px;}
+
 /* Survey */
 .survey-q{border-bottom:1px solid var(--border);padding:16px 0;}
 .survey-q:last-child{border-bottom:none;}
@@ -1176,9 +1192,9 @@ tbody tr:hover{background:var(--surface-2);}
             </div>
           </div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
-            <h3 style="margin-bottom:0;">Top 5 — Maior Risco de Saída/Desligamento</h3>
+            <h3 style="margin-bottom:0;">Todos os Colaboradores — Ordenados por Risco de Saída/Desligamento</h3>
           </div>
-          <div class="table-wrap">
+          <div class="table-wrap" style="max-height:560px;">
             <table>
               <thead><tr><th>Colaborador</th><th>Cargo</th><th>Setor</th><th>Unidade</th><th style="width:90px;">Score</th><th>Classificação</th><th class="no-print">Ação</th></tr></thead>
               <tbody id="frTbody"></tbody>
@@ -1336,6 +1352,22 @@ tbody tr:hover{background:var(--surface-2);}
 
       <!-- ---------- TAB 5: 9BOX ---------- -->
       <section class="tab-panel" id="tab-ninebox">
+        <div class="nb9box-lock-overlay" id="nb9boxLockOverlay">
+          <div class="nb9box-lock-box">
+            <div class="nb9box-lock-title">🔒 Acesso Restrito — Matriz 9Box</div>
+            <div class="form-field" style="margin-bottom:12px;">
+              <label>Login</label>
+              <input type="text" id="nb9boxLoginCode" autocomplete="off" style="width:100%;">
+              <div class="hint" id="nb9boxLoginNomeDisplay" style="margin-top:4px;min-height:14px;"></div>
+            </div>
+            <div class="form-field" style="margin-bottom:18px;">
+              <label>Senha</label>
+              <input type="password" id="nb9boxSenha" autocomplete="off" style="width:100%;">
+            </div>
+            <button class="btn btn-primary" style="width:100%;" id="btnNb9boxEntrar" type="button">Entrar</button>
+            <div class="hint" id="nb9boxLoginErro" style="display:none;margin-top:12px;color:var(--critical);text-align:center;"></div>
+          </div>
+        </div>
         <div class="panel-header">
           <div>
             <div class="panel-title">Matriz 9Box — Comportamento x Desempenho</div>
@@ -1848,6 +1880,21 @@ tbody tr:hover{background:var(--surface-2);}
               <select id="pdiColabSelect" style="min-width:260px;"></select>
             </div>
             <div class="form-field">
+              <label>Quadrante 9Box</label>
+              <select id="pdiQuadrante9Box" style="min-width:280px;">
+                <option value="">— Selecionar —</option>
+                <option value="3_3">DESTAQUES</option>
+                <option value="3_2">APRIMORAR TÉCNICA</option>
+                <option value="3_1">DESENVOLVER TÉCNICA</option>
+                <option value="2_3">APRIMORAR COMPORTAMENTO</option>
+                <option value="2_2">APRIMORAR COMPORTAMENTO E TÉCNICA</option>
+                <option value="2_1">VERIFICAR SITUAÇÃO</option>
+                <option value="1_3">DESENVOLVER COMPORTAMENTO</option>
+                <option value="1_2">TRABALHAR VALORES</option>
+                <option value="1_1">INSUFICIENTES</option>
+              </select>
+            </div>
+            <div class="form-field">
               <label>Cargo</label>
               <select id="pdiCargoSelect" style="min-width:230px;"></select>
             </div>
@@ -1939,7 +1986,7 @@ tbody tr:hover{background:var(--surface-2);}
           <div class="table-wrap" style="max-height:480px;">
             <table>
               <thead><tr>
-                <th>Colaborador</th><th>Cargo</th><th>Setor</th><th>Data de Início</th>
+                <th>Colaborador</th><th>Cargo</th><th>Setor</th><th>Quadrante 9Box</th><th>Data de Início</th>
                 <th style="width:110px;">Trein. Obrigatórios</th><th style="width:100px;">Concluídos</th><th style="width:100px;">Horas Cumpridas</th>
                 <th style="width:150px;">Progresso</th><th>Status</th><th class="no-print">Ações</th>
               </tr></thead>
@@ -3325,9 +3372,15 @@ function last12Months(){
    NAVEGAÇÃO ENTRE ABAS
    ===================================================================== */
 function switchTab(tab){
+  const abaAnterior = activeTab;
   activeTab = tab;
   document.querySelectorAll('.nav-item').forEach(el=> el.classList.toggle('active', el.dataset.tab===tab));
   document.querySelectorAll('.tab-panel').forEach(el=> el.classList.toggle('active', el.id==='tab-'+tab));
+  // Bloqueio de segurança da Matriz 9Box: a sessão de autenticação vale
+  // somente enquanto o usuário permanece nesta aba — ao sair para
+  // qualquer outra aba do Dashboard, a sessão é encerrada imediatamente e
+  // a próxima visita à aba exige Login (01) e Senha novamente.
+  if(abaAnterior==='ninebox' && tab!=='ninebox') bloquearNb9box();
   renderTab(tab);
 }
 function renderTab(tab){
@@ -4162,6 +4215,58 @@ function buildNineboxGrid(){
   });
   const xAxis = document.createElement('div'); xAxis.className='nb-axis-x'; xAxis.textContent='DESEMPENHO (Abaixo → Acima da Expectativa)';
   xAxis.style.gridRow='4 / 5'; xAxis.style.gridColumn='2 / 5'; grid.appendChild(xAxis);
+}
+
+/* =====================================================================
+   BLOQUEIO DE ACESSO — MATRIZ 9BOX (Login/Senha)
+   Autenticação simples de tela (não é controle de acesso real de
+   servidor — os dados da Matriz já trafegam para o navegador de quem
+   tem o link do Dashboard; este bloqueio serve para impedir que a tela
+   fique visível a quem passa pelo computador, não para proteger contra
+   um usuário técnico). Único código de login válido: "01" -> "Gessiana".
+   Sessão vale apenas enquanto a aba 9Box permanece ativa — ver o hook em
+   switchTab() (bloquearNb9box() é chamado sempre que o usuário sai desta
+   aba para qualquer outra).
+   ===================================================================== */
+const NB9BOX_LOGIN_CODES = { '01': 'Gessiana' };
+const NB9BOX_SENHA_CORRETA = '1987';
+let nb9boxAutenticado = false;
+
+function nb9boxNomeParaCodigo(codigo){ return NB9BOX_LOGIN_CODES[String(codigo||'').trim()] || ''; }
+
+function atualizarNb9boxLoginDisplay(){
+  const nome = nb9boxNomeParaCodigo($('nb9boxLoginCode').value);
+  $('nb9boxLoginNomeDisplay').textContent = nome ? ('Colaborador: '+nome) : '';
+}
+
+function tentarNb9boxLogin(){
+  const codigo = $('nb9boxLoginCode').value.trim();
+  const senha = $('nb9boxSenha').value;
+  const nome = nb9boxNomeParaCodigo(codigo);
+  const erroEl = $('nb9boxLoginErro');
+  if(nome && senha === NB9BOX_SENHA_CORRETA){
+    nb9boxAutenticado = true;
+    erroEl.style.display = 'none';
+    $('nb9boxLockOverlay').classList.add('hidden');
+    // Limpa os campos por segurança, para não deixar credenciais residuais
+    // visíveis/preenchidas no DOM depois de liberar o acesso.
+    $('nb9boxLoginCode').value = '';
+    $('nb9boxSenha').value = '';
+    $('nb9boxLoginNomeDisplay').textContent = '';
+  } else {
+    erroEl.textContent = 'Acesso negado.';
+    erroEl.style.display = 'block';
+    $('nb9boxSenha').value = '';
+  }
+}
+
+function bloquearNb9box(){
+  nb9boxAutenticado = false;
+  $('nb9boxLoginCode').value = '';
+  $('nb9boxSenha').value = '';
+  $('nb9boxLoginNomeDisplay').textContent = '';
+  $('nb9boxLoginErro').style.display = 'none';
+  $('nb9boxLockOverlay').classList.remove('hidden');
 }
 function renderNineBox(){
   refreshEmployeeSelects();
@@ -6038,10 +6143,13 @@ function limparPlanoPdiOnboarding(){
   ultimoPlanoTdColabId = '';
   ultimoPlanoTdItems = [];
   ultimoPlanoPdiTexto = '';
+  ultimoItemsEstrategicosPdi = [];
+  ultimoFonteAcoesEstrategicasPdi = '';
 
   $('pdiColabSelect').value = '';
   $('pdiCargoSelect').selectedIndex = 0;
   $('pdiGestorInput').value = '';
+  $('pdiQuadrante9Box').value = '';
   $('pdiDataInicio').value = fmtDateISO(new Date());
   atualizarFamiliaInfoPdi();
 }
@@ -6056,20 +6164,36 @@ function coletarContextoPdi(){
   const setor = emp? emp.Setor : '';
   const dataInicioStr = $('pdiDataInicio').value;
   const dataInicio = dataInicioStr? new Date(dataInicioStr+'T00:00:00') : new Date();
-  return {matricula: mat||'', nome, cargo, gestor, unidade, empresa, setor, dataInicio, dataInicioFmt: dataInicio.toLocaleDateString('pt-BR')};
+  const quadrante9Box = $('pdiQuadrante9Box').value || '';
+  const quadranteLabel = quadrante9Box? (PDI_QUADRANTE_9BOX_LABELS[quadrante9Box]||'') : '';
+  return {
+    matricula: mat||'', nome, cargo, gestor, unidade, empresa, setor, dataInicio, dataInicioFmt: dataInicio.toLocaleDateString('pt-BR'), quadrante9Box, quadranteLabel,
+    // Plano Estratégico Personalizado (Persona 🌸/Gerador Local) — ver
+    // gerarPlanoCompletoInteligente(). Fica em variáveis de módulo para não
+    // mudar a assinatura de coletarContextoPdi() em nenhum outro ponto do
+    // código: quem gera de novo (botão) preenche antes de chamar
+    // gerarPlanoPDIOnboarding(); quem reabre um plano salvo
+    // (abrirChecklistColaborador) restaura a partir do trainingItems já
+    // persistido, sem chamar a IA de novo.
+    itemsEstrategicos: ultimoItemsEstrategicosPdi || [],
+    fonteAcoesEstrategicas: ultimoFonteAcoesEstrategicasPdi || ''
+  };
 }
 function renderizarPlanoPDIClassico(ctx){
   const comps = Array.from(document.querySelectorAll('#pdiCompetencias input:checked')).map(i=>i.value);
   const linhasCompHtml = comps.length? comps.map(c=>`<li>${escapeHtml(c)}</li>`).join('') : '<li>[Selecione as competências]</li>';
 
   const items = montarTrainingItemsPDI(comps);
+  const itemsEstr = ctx.itemsEstrategicos || [];
+  items.push(...itemsEstr);
+
   ultimoPlanoTdItems = items;
   ultimoPlanoTdColabId = ctx.matricula || '';
   if(ctx.matricula && items.length){
     registrarPlanoTD(ctx.matricula, {
       tipo:'PDI', nome:ctx.nome, cargo:ctx.cargo, setor:ctx.setor, unidade:ctx.unidade,
       matricula: ctx.matricula, dataInicio: ctx.dataInicio.toISOString().slice(0,10), gestor:ctx.gestor,
-      competencias: comps, trainingItems: items
+      competencias: comps, trainingItems: items, quadrante9Box: ctx.quadrante9Box||'', quadranteLabel: ctx.quadranteLabel||''
     });
   }
   const progressoAtual = ctx.matricula ? (lerProgressoTD()[ctx.matricula]||{}) : {};
@@ -6078,6 +6202,8 @@ function renderizarPlanoPDIClassico(ctx){
     const cb = checklistCheckboxHtml(ctx.matricula, item, progressoAtual);
     return `<li><label style="display:flex;gap:8px;align-items:flex-start;"><span>${cb}</span><span><b>${i+1}. ${escapeHtml(c)}:</b> ${escapeHtml(PDI_ACOES[c])}</span></label></li>`;
   }).join('') : '<li>1. [A definir]</li>';
+
+  const secaoEstrategicaHtml = acoesEstrategicasSecaoHtml(ctx, itemsEstr, ctx.fonteAcoesEstrategicas);
 
   const html = `<div class="pdi-doc-header">
       <div class="pdi-doc-title">PLANO DE DESENVOLVIMENTO INDIVIDUAL (PDI)</div>
@@ -6090,9 +6216,11 @@ function renderizarPlanoPDIClassico(ctx){
       </div>
     </div>
     <div class="pdi-doc-section"><h4>Competências Prioritárias para Desenvolvimento</h4><ul>${linhasCompHtml}</ul></div>
-    <div class="pdi-doc-section"><h4>Ações Recomendadas &amp; Checklist de Conclusão</h4><ul>${linhasAcoesHtml}</ul>${resumoProgressoHtml(ctx.matricula, items)}</div>
-    <div class="pdi-doc-section"><h4>Prazo e Acompanhamento</h4><p>Prazo de revisão: 90 dias.<br>Próxima reunião de acompanhamento: a agendar entre colaborador e gestor.</p></div>`;
+    <div class="pdi-doc-section"><h4>Ações Recomendadas &amp; Checklist de Conclusão</h4><ul>${linhasAcoesHtml}</ul></div>
+    ${secaoEstrategicaHtml}
+    <div class="pdi-doc-section"><h4>Prazo e Acompanhamento</h4><p>Prazo de revisão: 90 dias.<br>Próxima reunião de acompanhamento: a agendar entre colaborador e gestor.</p>${resumoProgressoHtml(ctx.matricula, items)}</div>`;
 
+  const secaoEstrategicaTexto = acoesEstrategicasSecaoTexto(itemsEstr, ctx.fonteAcoesEstrategicas);
   const texto = `============================================================
 PLANO DE DESENVOLVIMENTO INDIVIDUAL (PDI)
 ============================================================
@@ -6110,7 +6238,7 @@ ${comps.length? comps.map(c=>'- '+c).join('\n') : '- [Selecione as competências
 AÇÕES RECOMENDADAS
 ------------------------------------------------------------
 ${comps.length? comps.map((c,i)=>(i+1)+'. '+PDI_ACOES[c]).join('\n') : '1. [A definir]'}
-
+${secaoEstrategicaTexto}
 Prazo de revisão: 90 dias.
 Próxima reunião de acompanhamento: a agendar entre colaborador e gestor.
 ============================================================`;
@@ -6122,13 +6250,23 @@ function renderizarPlanoOnboarding(ctx){
   const tituloTrilha = descricaoFamiliaOnboarding(familia);
 
   const items = montarTrainingItemsOnboarding(linhas);
+  // Personalização pelo Quadrante 9Box: mantém a tabela de cronograma
+  // semanal 100% como já era (nenhuma linha/semana é alterada) e apenas
+  // ACRESCENTA um item extra, checável e rastreado na barra de progresso
+  // normalmente, com o foco estratégico do quadrante selecionado.
+  const grupo9Box = ctx.quadrante9Box ? PDI_QUADRANTE_FOCO_GRUPO[ctx.quadrante9Box] : '';
+  const itemFoco9Box = grupo9Box ? {id:'q9box-foco', label:'Foco 9Box ('+ctx.quadranteLabel+'): '+PDI_QUADRANTE_ITEM_EXTRA[grupo9Box], horas:TD_HORAS_POR_SEMANA_ONBOARDING} : null;
+  if(itemFoco9Box) items.push(itemFoco9Box);
+  const itemsEstr = ctx.itemsEstrategicos || [];
+  items.push(...itemsEstr);
+
   ultimoPlanoTdItems = items;
   ultimoPlanoTdColabId = ctx.matricula || '';
   if(ctx.matricula){
     registrarPlanoTD(ctx.matricula, {
       tipo:'Onboarding', nome:ctx.nome, cargo:ctx.cargo, setor:ctx.setor, unidade:ctx.unidade,
       matricula: ctx.matricula, dataInicio: ctx.dataInicio.toISOString().slice(0,10), familia, gestor:ctx.gestor,
-      trainingItems: items
+      trainingItems: items, quadrante9Box: ctx.quadrante9Box||'', quadranteLabel: ctx.quadranteLabel||''
     });
   }
   const progressoAtual = ctx.matricula ? (lerProgressoTD()[ctx.matricula]||{}) : {};
@@ -6142,6 +6280,23 @@ function renderizarPlanoOnboarding(ctx){
     return `<tr><td style="text-align:center;">${l.semana}</td><td style="white-space:nowrap;">${l.periodo}</td><td>${escapeHtml(l.atividades)}</td><td>${escapeHtml(l.responsavel)}</td><td>${escapeHtml(l.avaliacao)}</td><td style="text-align:center;">${cb}</td></tr>`;
   }).join('');
 
+  // Tag do quadrante no cabeçalho (formato "[Quadrante 9Box: DESTAQUES]"
+  // pedido pelo RH) e seção de Foco Estratégico — ambas só aparecem
+  // quando um quadrante foi de fato selecionado.
+  const tagQuadranteHtml = ctx.quadranteLabel ? `<div style="margin-top:8px;"><span class="badge info">[Quadrante 9Box: ${escapeHtml(ctx.quadranteLabel)}]</span></div>` : '';
+  const focoSecaoHtml = grupo9Box ? `
+    <div class="pdi-doc-section">
+      <h4>Foco Estratégico do Onboarding — Quadrante 9Box</h4>
+      <p>${escapeHtml(PDI_QUADRANTE_FOCO_TEXTO[grupo9Box])}</p>
+      <ul style="list-style:none;padding-left:0;">
+        <li><label style="display:flex;gap:8px;align-items:flex-start;cursor:pointer;">
+          <span>${checklistCheckboxHtml(ctx.matricula, itemFoco9Box, progressoAtual)}</span>
+          <span>${escapeHtml(itemFoco9Box.label)}</span>
+        </label></li>
+      </ul>
+    </div>` : '';
+  const secaoEstrategicaHtml = acoesEstrategicasSecaoHtml(ctx, itemsEstr, ctx.fonteAcoesEstrategicas);
+
   const html = `<div class="pdi-doc-header">
       <div class="pdi-doc-title">PLANO DE ONBOARDING</div>
       <div class="pdi-doc-grid">
@@ -6151,7 +6306,10 @@ function renderizarPlanoOnboarding(ctx){
         <div><b>Data de Início:</b> ${ctx.dataInicioFmt}</div>
         <div><b>Empresa / Unidade:</b> ${escapeHtml(ctx.empresa)} — ${escapeHtml(ctx.unidade)}</div>
       </div>
+      ${tagQuadranteHtml}
     </div>
+    ${focoSecaoHtml}
+    ${secaoEstrategicaHtml}
     <div class="pdi-doc-section">
       <h4>Metas e Fases Formais</h4>
       <table class="pdi-doc-table">
@@ -6173,6 +6331,13 @@ function renderizarPlanoOnboarding(ctx){
     </div>`;
 
   const linhasTexto = linhas.map(l=>`Semana ${l.semana} (${l.periodo})\n  Atividade: ${l.atividades}\n  Responsável/Ministrante: ${l.responsavel}\n  Método de Avaliação: ${l.avaliacao}`).join('\n\n');
+  const quadranteTextoLinha = ctx.quadranteLabel ? `Quadrante 9Box: [${ctx.quadranteLabel}]\n` : '';
+  const focoTexto = grupo9Box ? `------------------------------------------------------------
+FOCO ESTRATÉGICO DO ONBOARDING — QUADRANTE 9BOX
+------------------------------------------------------------
+${PDI_QUADRANTE_FOCO_TEXTO[grupo9Box]}
+Item de acompanhamento: ${itemFoco9Box.label}
+` : '';
   const texto = `============================================================
 PLANO DE ONBOARDING
 ============================================================
@@ -6181,17 +6346,17 @@ Cargo: ${ctx.cargo}
 Gestor Responsável: ${ctx.gestor}
 Data de Início: ${ctx.dataInicioFmt}
 Empresa / Unidade: ${ctx.empresa} — ${ctx.unidade}
-------------------------------------------------------------
+${quadranteTextoLinha}------------------------------------------------------------
 METAS E FASES FORMAIS
 ------------------------------------------------------------
 Primeiros 30 dias (${d30.toLocaleDateString('pt-BR')}): Integração, apresentação da equipe, treinamentos introdutórios e alinhamento de expectativas.
 Primeiros 60 dias (${d60.toLocaleDateString('pt-BR')}): Acompanhamento das entregas iniciais, feedback estruturado e ajustes de rota.
 Primeiros 90 dias (${d90.toLocaleDateString('pt-BR')}): Avaliação de adaptação e definição de metas de médio prazo.
-------------------------------------------------------------
+${focoTexto}------------------------------------------------------------
 CRONOGRAMA DE TREINAMENTOS — ${tituloTrilha}
 ------------------------------------------------------------
 ${linhasTexto}
-============================================================`;
+${acoesEstrategicasSecaoTexto(itemsEstr, ctx.fonteAcoesEstrategicas)}============================================================`;
   exibirPlanoPdiGerado(html, texto);
 }
 function gerarPlanoPDIOnboarding(){
@@ -6233,6 +6398,45 @@ const TD_PLANOS_KEY = 'hr_td_planos_v1';
      - PDI: 1 workshop/mentoria por competência priorizada. */
 const TD_HORAS_POR_SEMANA_ONBOARDING = 8;
 const TD_HORAS_POR_ACAO_PDI = 6;
+/* =====================================================================
+   ONBOARDING PERSONALIZADO PELOS QUADRANTES OFICIAIS DA MATRIZ 9BOX —
+   campo "Quadrante 9Box" do painel "Configurar Plano". Valor do <select>
+   é "comportamento_desempenho" (ex.: "3_3"), EXATAMENTE o mesmo esquema
+   de índices já usado por NB_LABELS/NB_ACTION_PLANS na aba Matriz 9Box
+   (1=Abaixo, 2=Na Expectativa, 3=Acima) — reaproveita a mesma fonte de
+   verdade (nineboxAssignments) para o preenchimento automático, em vez
+   de duplicar uma segunda classificação paralela.
+   ===================================================================== */
+const PDI_QUADRANTE_9BOX_LABELS = {
+  '3_3':'DESTAQUES', '3_2':'APRIMORAR TÉCNICA', '3_1':'DESENVOLVER TÉCNICA',
+  '2_3':'APRIMORAR COMPORTAMENTO', '2_2':'APRIMORAR COMPORTAMENTO E TÉCNICA', '2_1':'VERIFICAR SITUAÇÃO',
+  '1_3':'DESENVOLVER COMPORTAMENTO', '1_2':'TRABALHAR VALORES', '1_1':'INSUFICIENTES'
+};
+/* Os 9 quadrantes se agrupam em 4 "focos" estratégicos de onboarding —
+   mesmo agrupamento definido no pedido do RH. */
+const PDI_QUADRANTE_FOCO_GRUPO = {
+  '3_3':'autonomia', '2_3':'autonomia',
+  '3_1':'tecnica', '3_2':'tecnica',
+  '1_3':'comportamento', '1_2':'comportamento',
+  '2_1':'rigido', '1_1':'rigido', '2_2':'rigido'
+};
+const PDI_QUADRANTE_FOCO_TEXTO = {
+  autonomia: 'Foco em autonomia acelerada, projetos de melhoria contínua a partir do 60º dia e preparação para liderança ou visão sistêmica.',
+  tecnica: 'Foco total em capacitação técnica, procedimentos operacionais padrão (POPs), ferramentas do cargo e acompanhamento lado a lado com um mentor.',
+  comportamento: 'Foco em treinamentos de cultura, normas da Brasmetal, trabalho em equipe e feedbacks comportamentais quinzenais com a gestão.',
+  rigido: 'Acompanhamento rígido semanal, metas curtas de alinhamento operacional e checagens frequentes de entregas básicas.'
+};
+/* Item extra de checklist (checkbox rastreável, entra na barra de
+   progresso normalmente) acrescentado ao cronograma padrão do Onboarding
+   quando um Quadrante 9Box é selecionado — mantém a estrutura visual
+   existente (tabela de fases/cronograma inalterada) e só adiciona o foco
+   personalizado como mais um item mensurável. */
+const PDI_QUADRANTE_ITEM_EXTRA = {
+  autonomia: 'Projeto de melhoria contínua (a partir do 60º dia) + preparação para liderança/visão sistêmica.',
+  tecnica: 'Capacitação técnica intensiva: POPs, ferramentas do cargo e acompanhamento lado a lado com mentor técnico.',
+  comportamento: 'Treinamentos de cultura/valores Brasmetal, trabalho em equipe e feedback comportamental quinzenal com a gestão.',
+  rigido: 'Acompanhamento semanal rígido: metas curtas de alinhamento operacional e checagem frequente de entregas básicas.'
+};
 /* Filtros próprios da aba PDI & Onboarding (Loja/Unidade, Setor, Status do
    Plano e busca textual) — mesmo padrão de "filtro de aba" já usado em
    Controle de Vencimentos Legais (vencFiltros): aplicados por cima do filtro
@@ -6332,7 +6536,8 @@ async function sincronizarTDAutomatica(silent){
         tipo: l.Tipo||'', nome: l.Nome||'', cargo: l.Cargo||'', setor: l.Setor||'', unidade: l.Unidade||'',
         gestor: l.Gestor||'', dataInicio: l.DataInicio||'', familia: l.Familia||'',
         competencias: parseJSONSeguro(l.CompetenciasJSON, []),
-        trainingItems: parseJSONSeguro(l.TrainingItemsJSON, [])
+        trainingItems: parseJSONSeguro(l.TrainingItemsJSON, []),
+        quadrante9Box: l.Quadrante9Box||'', quadranteLabel: l.QuadranteLabel||''
       };
       novoProgresso[mat] = parseJSONSeguro(l.ProgressoJSON, {});
     });
@@ -6387,7 +6592,8 @@ function registroTDCompletoParaEnvio(matricula){
     tipo: plano.tipo||'', nome: plano.nome||'', cargo: plano.cargo||'', setor: plano.setor||'', unidade: plano.unidade||'',
     gestor: plano.gestor||'', dataInicio: plano.dataInicio||'', familia: plano.familia||'',
     competencias: plano.competencias||[], trainingItems: plano.trainingItems||[],
-    progresso, excluido: !!plano.excluido
+    progresso, excluido: !!plano.excluido,
+    quadrante9Box: plano.quadrante9Box||'', quadranteLabel: plano.quadranteLabel||''
   };
 }
 async function salvarRegistroTDNaPlanilha(matricula){
@@ -6459,6 +6665,214 @@ function resumoProgressoHtml(colabId, items){
     <div class="hint">Progresso: ${concluidos}/${total} treinamentos (${pct}%) • Total: ${horas}h realizadas</div>
   </div>`;
 }
+/* =====================================================================
+   PLANO ESTRATÉGICO PERSONALIZADO — Persona 🌸 (IA) + Gerador Local
+   9Box & Risco de Turnover
+   ---------------------------------------------------------------------
+   Renderiza a seção "Plano Estratégico Personalizado" dentro do documento
+   de PDI/Onboarding, a partir de uma lista JÁ RESOLVIDA de itens
+   ({id,label,horas}, ids sempre no formato "ia-acao-N") — tanto para uma
+   geração NOVA (vinda da IA ou do Gerador Local, ver
+   gerarPlanoCompletoInteligente) quanto para a REABERTURA de um plano já
+   salvo (abrirChecklistColaborador restaura os itens direto do
+   trainingItems persistido, SEM chamar a IA de novo — mantém ids/labels
+   estáveis para o progresso continuar batendo certo). Por isso a função
+   só depende de "items" e nunca precisa da lista bruta de ações
+   {nome,foco,prazo,responsavel} originais. ===================================================================== */
+function itemsEstrategicosDeAcoes(acoes){
+  return (acoes||[]).map((a,i)=> ({
+    id: 'ia-acao-'+(i+1),
+    label: a.nome+' — '+a.foco+' (Prazo: '+a.prazo+' dias · Responsável: '+a.responsavel+')',
+    horas: 4
+  }));
+}
+function acoesEstrategicasSecaoHtml(ctx, itemsEstr, fonte){
+  if(!itemsEstr || !itemsEstr.length) return '';
+  const progressoAtual = ctx.matricula ? (lerProgressoTD()[ctx.matricula]||{}) : {};
+  const linhas = itemsEstr.map((item,i)=>{
+    const cb = checklistCheckboxHtml(ctx.matricula, item, progressoAtual);
+    return `<li><label style="display:flex;gap:8px;align-items:flex-start;"><span>${cb}</span><span>${i+1}. ${escapeHtml(item.label)}</span></label></li>`;
+  }).join('');
+  const fonteHtml = fonte ? `<div class="hint" style="margin-bottom:8px;">Fonte: ${escapeHtml(fonte)}</div>` : '';
+  return `<div class="pdi-doc-section">
+      <h4>🌸 Plano Estratégico Personalizado — 9Box &amp; Risco de Turnover</h4>
+      ${fonteHtml}
+      <ul>${linhas}</ul>
+    </div>`;
+}
+function acoesEstrategicasSecaoTexto(itemsEstr, fonte){
+  if(!itemsEstr || !itemsEstr.length) return '';
+  const linhas = itemsEstr.map((item,i)=> (i+1)+'. '+item.label).join('\n');
+  return `------------------------------------------------------------
+PLANO ESTRATÉGICO PERSONALIZADO — 9BOX & RISCO DE TURNOVER
+------------------------------------------------------------
+${fonte? ('Fonte: '+fonte+'\n') : ''}${linhas}
+
+`;
+}
+/* Normaliza uma ação bruta (vinda do JSON da IA, OU montada pelo Gerador
+   Local) para o formato {nome,foco,prazo,responsavel} — nunca confia
+   cegamente no que a IA devolveu (campo ausente, prazo fora dos 4 valores
+   aceitos, texto absurdamente longo por algum comportamento inesperado
+   do modelo). */
+function normalizarAcaoEstrategica(a){
+  const prazosValidos = ['15','30','60','90'];
+  let prazo = String((a&&a.prazo)||'30').replace(/\D/g,'');
+  if(!prazosValidos.includes(prazo)) prazo = '30';
+  return {
+    nome: String((a&&a.nome)||'Ação de Desenvolvimento').trim().slice(0,140) || 'Ação de Desenvolvimento',
+    foco: String((a&&a.foco)||'—').trim().slice(0,600) || '—',
+    prazo,
+    responsavel: String((a&&a.responsavel)||'Gestor Imediato').trim().slice(0,120) || 'Gestor Imediato'
+  };
+}
+/* Retorna o diagnóstico de Risco de Turnover (Flight Risk) já calculado
+   pelo dashboard (mesma fonte da Matriz de Risco de Turnover da aba
+   People Analytics — calcularFlightRiskScores) para um colaborador, pelo
+   filtro global ATUAL. Se o colaborador estiver fora do filtro global no
+   momento (ex.: filtro de Unidade/Setor mudou depois de selecionado no
+   formulário), devolve null — o restante do fluxo trata isso como
+   "Pendente de Avaliação", nunca quebra a geração do plano. */
+function obterRiscoTurnoverParaPdi(matricula){
+  if(!matricula) return null;
+  return calcularFlightRiskScores().find(s=> s.matricula===matricula) || null;
+}
+/* Gerador Local — motor de regras 100% em JavaScript, sem custo e sem
+   depender de rede/IA, cruzando as MESMAS duas bases usadas pela Persona:
+   Quadrante 9Box (base de conhecimento NB_ACTION_PLANS, já usada em
+   "Gerar Plano de Ação & Decisão" da própria Matriz 9Box) + Risco de
+   Turnover (calcularFlightRiskScores). Executa em milissegundos — é o
+   fallback acionado quando a IA falha, expira ou estoura a cota gratuita,
+   garantindo que "Gerar Plano Completo" NUNCA trava a interface
+   esperando a IA indefinidamente. */
+function gerarAcoesLocalPdi(ctx, risco, tipoPlano, comps){
+  const acoes = [];
+  if(ctx.quadrante9Box && NB_ACTION_PLANS[ctx.quadrante9Box]){
+    const p = NB_ACTION_PLANS[ctx.quadrante9Box];
+    acoes.push({ nome: 'Plano de Ação — Quadrante 9Box ('+p.nome+')', foco: p.acoes, prazo: '60', responsavel: 'Gestor Imediato + RH' });
+  }
+  if(risco && (risco.nivel==='critico' || risco.nivel==='medio')){
+    const urgente = risco.nivel==='critico';
+    acoes.push({
+      nome: urgente? 'Ação Imediata de Retenção' : 'Plano de Retenção Preventivo',
+      foco: 'Score de risco '+risco.score+' pts ('+(risco.motivos[0]||'fatores combinados de risco de saída')+'). Alinhar expectativas de carreira e reforçar engajamento em conversa 1:1 com o gestor imediato.',
+      prazo: urgente? '15' : '30',
+      responsavel: 'Gestor Imediato + RH'
+    });
+  } else if(risco && risco.nivel==='pendente'){
+    acoes.push({ nome: 'Completar Avaliação 9Box', foco: 'Colaborador ainda sem posicionamento na Matriz 9Box — completar antes de aprofundar o plano estratégico, já que este é o fator de maior peso no Score de Risco.', prazo: '15', responsavel: 'RH' });
+  }
+  (comps||[]).slice(0,2).forEach(c=>{
+    acoes.push({ nome: 'Desenvolvimento em '+c, foco: PDI_ACOES[c] || ('Plano de capacitação direcionado em '+c+'.'), prazo: '60', responsavel: 'Gestor Imediato' });
+  });
+  if(acoes.length < 3){
+    acoes.push({ nome: 'Acompanhamento 1:1 Estruturado', foco: 'Reunião mensal de acompanhamento entre colaborador e gestor imediato, com registro de evolução e ajuste de rota.', prazo: '30', responsavel: 'Gestor Imediato' });
+  }
+  if(tipoPlano==='Onboarding' && acoes.length < 3){
+    acoes.push({ nome: 'Integração com a Equipe', foco: 'Apresentação formal aos times parceiros e mapeamento de pontos focais por área.', prazo: '15', responsavel: 'RH' });
+  }
+  return acoes.slice(0,5).map(normalizarAcaoEstrategica);
+}
+/* Monta o payload enviado ao backend (action=personaPlanoPDI) — mesmo
+   diagnóstico (9Box + Risco de Turnover + Competências) usado pelo
+   Gerador Local, para que os dois caminhos (IA e contingência) partam
+   exatamente da mesma base de fatos. */
+function montarPayloadIaPdi(ctx, risco, tipoPlano, comps){
+  return {
+    tipoPlano, nome: ctx.nome, cargo: ctx.cargo, setor: ctx.setor, unidade: ctx.unidade, empresa: ctx.empresa, gestor: ctx.gestor,
+    quadrante9Box: ctx.quadranteLabel || '',
+    risco: risco ? { nivel: risco.nivel, label: nivelRiscoInfo(risco.nivel).label, score: risco.score, motivos: risco.motivos } : { nivel:'pendente', label: nivelRiscoInfo('pendente').label, score:0, motivos:[] },
+    competencias: comps||[]
+  };
+}
+/* JSONP dedicado (action=personaPlanoPDI) — mesmo padrão de
+   enviarParecerRsViaPersonaJSONP (script tag + callback global próprios,
+   nunca colide com o widget de chat nem com o Gerador de Parecer de R&S).
+   Timeout de 45s: a resposta é curta (JSON com 3 a 5 ações), mas ainda
+   assim generosa o bastante para cobrir as retentativas automáticas do
+   backend em caso de 503 (chamarGeminiComRetentativa). */
+window.carregarPlanoPdiPersonaJSONP = function(dados){
+  const oldScript = document.getElementById('jsonp-plano-pdi-persona-script-tag');
+  if(oldScript) oldScript.remove();
+  if(!dados){ if(window.__jsonpPlanoPdiPersonaReject) window.__jsonpPlanoPdiPersonaReject(new Error('Resposta vazia do Apps Script.')); return; }
+  if(window.__jsonpPlanoPdiPersonaResolve) window.__jsonpPlanoPdiPersonaResolve(dados);
+};
+function enviarPlanoPdiParaPersonaViaJSONP(payloadObj){
+  return new Promise((resolve, reject)=>{
+    const anterior = document.getElementById('jsonp-plano-pdi-persona-script-tag');
+    if(anterior) anterior.remove();
+    let concluido = false;
+    const limpar = () => { const tag = document.getElementById('jsonp-plano-pdi-persona-script-tag'); if(tag) tag.remove(); };
+    const timer = setTimeout(()=>{
+      if(concluido) return; concluido = true;
+      window.__jsonpPlanoPdiPersonaResolve = null; window.__jsonpPlanoPdiPersonaReject = null;
+      limpar();
+      reject(new Error('Tempo limite excedido ao consultar a IA (Persona) para o plano estratégico.'));
+    }, 45000);
+    window.__jsonpPlanoPdiPersonaResolve = (dados)=>{ if(concluido) return; concluido=true; clearTimeout(timer); window.__jsonpPlanoPdiPersonaResolve=null; window.__jsonpPlanoPdiPersonaReject=null; resolve(dados); };
+    window.__jsonpPlanoPdiPersonaReject = (err)=>{ if(concluido) return; concluido=true; clearTimeout(timer); window.__jsonpPlanoPdiPersonaResolve=null; window.__jsonpPlanoPdiPersonaReject=null; limpar(); reject(err); };
+    const json = JSON.stringify(payloadObj);
+    const payload = btoa(unescape(encodeURIComponent(json)));
+    const sep = GSHEET_URL_PADRAO.indexOf('?')===-1?'?':'&';
+    const s = document.createElement('script');
+    s.id = 'jsonp-plano-pdi-persona-script-tag';
+    s.src = GSHEET_URL_PADRAO + sep + 'action=personaPlanoPDI&payload=' + encodeURIComponent(payload) + '&callback=carregarPlanoPdiPersonaJSONP';
+    s.onerror = () => { if(window.__jsonpPlanoPdiPersonaReject) window.__jsonpPlanoPdiPersonaReject(new Error('Falha ao conectar ao Apps Script.')); };
+    document.head.appendChild(s);
+  });
+}
+/* Estado do último Plano Estratégico resolvido (IA ou Gerador Local) —
+   ver coletarContextoPdi(). Preenchido por gerarPlanoCompletoInteligente()
+   numa geração nova, ou por abrirChecklistColaborador() ao restaurar um
+   plano já salvo (sem chamar a IA de novo). */
+let ultimoItemsEstrategicosPdi = [];
+let ultimoFonteAcoesEstrategicasPdi = '';
+/* Handler do botão "🚀 Gerar Plano Completo": tenta a Persona 🌸 primeiro
+   (rota dedicada action=personaPlanoPDI); se falhar por qualquer motivo
+   (cota, timeout, indisponibilidade, resposta em formato inesperado),
+   cai automaticamente para o Gerador Local — sem alertar o usuário com um
+   erro, já que o plano é entregue de qualquer forma, apenas identificado
+   por sua fonte no próprio documento gerado. */
+async function gerarPlanoCompletoInteligente(){
+  const ctx = coletarContextoPdi();
+  const tipoPlano = $('pdiTipo').value;
+  const comps = Array.from(document.querySelectorAll('#pdiCompetencias input:checked')).map(i=>i.value);
+  const risco = ctx.matricula ? obterRiscoTurnoverParaPdi(ctx.matricula) : null;
+
+  const btn = $('btnGenPDIOnboarding');
+  const textoOriginalBtn = btn.textContent;
+  const textoOriginalPlaceholder = $('pdiOnboardingPlaceholder').textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Persona 🌸 elaborando...';
+  $('pdiOnboardingDoc').style.display = 'none';
+  $('pdiOnboardingPlaceholder').style.display = 'block';
+  $('pdiOnboardingPlaceholder').textContent = 'Persona 🌸 elaborando PDI estratégico por 9Box & Risco de Turnover...';
+
+  let acoesFinal, fonteFinal;
+  try{
+    const payload = montarPayloadIaPdi(ctx, risco, tipoPlano, comps);
+    const resp = await enviarPlanoPdiParaPersonaViaJSONP(payload);
+    if(resp && resp.error) throw new Error(resp.error);
+    if(!resp || !resp.reply) throw new Error('Resposta vazia da IA.');
+    const parsed = JSON.parse(resp.reply);
+    const acoesIA = Array.isArray(parsed && parsed.acoes) ? parsed.acoes : (Array.isArray(parsed) ? parsed : null);
+    if(!acoesIA || !acoesIA.length) throw new Error('A IA respondeu em formato inesperado.');
+    acoesFinal = acoesIA.slice(0,5).map(normalizarAcaoEstrategica);
+    fonteFinal = 'Persona 🌸 (Inteligência Artificial — Google Gemini)';
+  }catch(err){
+    console.warn('PDI/Onboarding: geração via Persona indisponível agora, usando o Gerador Local.', err);
+    acoesFinal = gerarAcoesLocalPdi(ctx, risco, tipoPlano, comps);
+    fonteFinal = 'Motor de Regras Local (contingência — IA indisponível ou cota excedida)';
+  }
+
+  ultimoItemsEstrategicosPdi = itemsEstrategicosDeAcoes(acoesFinal);
+  ultimoFonteAcoesEstrategicasPdi = fonteFinal;
+
+  btn.disabled = false;
+  btn.textContent = textoOriginalBtn;
+  $('pdiOnboardingPlaceholder').textContent = textoOriginalPlaceholder;
+  gerarPlanoPDIOnboarding();
+}
 /* Atualiza in-place a barra/legenda de progresso do documento atualmente
    exibido, sem precisar reconstruir todo o HTML do plano ao marcar um
    checkbox — evita perder o foco/scroll do usuário na tela. */
@@ -6508,6 +6922,7 @@ function calcularMatrizTD(){
     linhas.push({
       colabId, nome:plano.nome, cargo:plano.cargo, setor:plano.setor, unidade:plano.unidade,
       tipo:plano.tipo, dataInicio, total, concluidos, horas, pct, status,
+      quadranteLabel: plano.quadranteLabel||'',
       salario: emp? (Number(emp.Salario_Base)||0) : 0
     });
   });
@@ -6583,6 +6998,7 @@ function linhaMatrizTdHtml(l){
     <td>${escapeHtml(l.nome)}</td>
     <td>${escapeHtml(l.cargo||'—')}</td>
     <td>${escapeHtml(l.setor||'—')}</td>
+    <td>${l.quadranteLabel? `<span class="badge info">${escapeHtml(l.quadranteLabel)}</span>` : '—'}</td>
     <td>${l.dataInicio? l.dataInicio.toLocaleDateString('pt-BR') : '—'}</td>
     <td class="num">${l.total}</td>
     <td class="num">${l.concluidos}</td>
@@ -6743,7 +7159,7 @@ function renderTDPanel(){
   renderGraficosPdiTd(kpis.linhas);
 
   $('tdMatrizTbody').innerHTML = kpis.linhas.map(linhaMatrizTdHtml).join('') ||
-    '<tr><td colspan="10" class="hint">Nenhum plano de Onboarding/PDI gerado ainda para os filtros atuais. Gere um plano acima vinculado a um colaborador da base para começar o acompanhamento.</td></tr>';
+    '<tr><td colspan="11" class="hint">Nenhum plano de Onboarding/PDI gerado ainda para os filtros atuais. Gere um plano acima vinculado a um colaborador da base para começar o acompanhamento.</td></tr>';
   $('tdMatrizCountInfo').textContent = `${kpis.linhas.length} colaborador(es) com plano de treinamento no filtro atual.`;
 }
 /* Garante que o colaborador de um plano salvo esteja selecionável no
@@ -6778,6 +7194,15 @@ function abrirChecklistColaborador(colabId){
     });
   }
   atualizarFamiliaInfoPdi();
+  $('pdiQuadrante9Box').value = plano.quadrante9Box || '';
+  // Restaura (SEM chamar a IA de novo) as ações do Plano Estratégico
+  // Personalizado já salvas neste plano — identificadas pelo prefixo fixo
+  // "ia-acao-" do id (ver itemsEstrategicosDeAcoes). Reabrir um plano
+  // salvo nunca deve regerar o plano estratégico via IA: além de gastar
+  // cota à toa, o conteúdo poderia vir diferente a cada nova consulta e
+  // "perder" o progresso já marcado pelo usuário nesses itens.
+  ultimoItemsEstrategicosPdi = (Array.isArray(plano.trainingItems)? plano.trainingItems : []).filter(i=> i && String(i.id||'').indexOf('ia-acao-')===0);
+  ultimoFonteAcoesEstrategicasPdi = '';
   gerarPlanoPDIOnboarding();
   $('pdiOnboardingDoc').scrollIntoView({behavior:'smooth', block:'start'});
 }
@@ -8055,8 +8480,12 @@ function renderFlightRisk(){
   $('fr-kpi-medio').textContent = scores.filter(s=>s.nivel==='medio').length;
   $('fr-kpi-baixo').textContent = scores.filter(s=>s.nivel==='baixo').length;
   $('fr-kpi-pendente').textContent = scores.filter(s=>s.nivel==='pendente').length;
-  const top5 = scores.slice(0,5);
-  $('frTbody').innerHTML = top5.map(linhaFlightRiskHtml).join('') || '<tr><td colspan="7" class="hint">Nenhum colaborador ativo no filtro atual.</td></tr>';
+  // Exibe TODOS os colaboradores ativos do filtro atual, já ordenados do
+  // maior para o menor Score de Risco (calcularFlightRiskScores() já
+  // devolve a lista ordenada) — sem limite de 5 linhas. A rolagem interna
+  // do .table-wrap (com cabeçalho fixo) mantém a tabela navegável mesmo
+  // com toda a base ativa listada.
+  $('frTbody').innerHTML = scores.map(linhaFlightRiskHtml).join('') || '<tr><td colspan="7" class="hint">Nenhum colaborador ativo no filtro atual.</td></tr>';
 }
 let ultimoPlanoRetencaoTexto = '';
 /* Gera o documento de ação sugerido (texto copiável) para um colaborador, a
@@ -9744,6 +10173,10 @@ function wireEvents(){
   $('taskFilterOwner').addEventListener('input', renderTaskList);
   $('btnResetTaskFilters').addEventListener('click', ()=>{ $('taskFilterStatus').value='Todos'; $('taskFilterPrio').value='Todas'; $('taskFilterOwner').value=''; renderTaskList(); });
 
+  $('nb9boxLoginCode').addEventListener('input', atualizarNb9boxLoginDisplay);
+  $('nb9boxLoginCode').addEventListener('keydown', e=>{ if(e.key==='Enter') tentarNb9boxLogin(); });
+  $('nb9boxSenha').addEventListener('keydown', e=>{ if(e.key==='Enter') tentarNb9boxLogin(); });
+  $('btnNb9boxEntrar').addEventListener('click', tentarNb9boxLogin);
   $('btnPosicionar').addEventListener('click', posicionarColaborador);
   $('btnGen9BoxAction').addEventListener('click', gerar9BoxActionPlan);
   $('btnCopy9BoxAction').addEventListener('click', copiar9BoxActionPlan);
@@ -9846,10 +10279,14 @@ function wireEvents(){
       if(emp.Cargo) garantirOpcaoCargoPdi(emp.Cargo);
       if(emp.Gestor_Imediato) $('pdiGestorInput').value = emp.Gestor_Imediato;
     }
+    // Preenchimento Automático do Quadrante 9Box: se o colaborador já possuir
+    // uma posição registrada na Matriz 9Box, pré-seleciona o quadrante correspondente.
+    const pos9box = mat? nineboxAssignments[mat] : null;
+    $('pdiQuadrante9Box').value = (pos9box && pos9box.pot && pos9box.perf) ? (pos9box.pot+'_'+pos9box.perf) : '';
     atualizarFamiliaInfoPdi();
   });
   $('pdiCargoSelect').addEventListener('change', atualizarFamiliaInfoPdi);
-  $('btnGenPDIOnboarding').addEventListener('click', gerarPlanoPDIOnboarding);
+  $('btnGenPDIOnboarding').addEventListener('click', gerarPlanoCompletoInteligente);
   $('btnClearPdiPlan').addEventListener('click', limparPlanoPdiOnboarding);
   $('btnCopyPDIOnboarding').addEventListener('click', copiarPlanoPdiOnboarding);
   $('btnPrintPDIOnboarding').addEventListener('click', imprimirPlanoPdiOnboarding);
