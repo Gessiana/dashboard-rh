@@ -516,6 +516,22 @@ tbody tr:hover{background:var(--surface-2);}
 .nb9box-lock-overlay.hidden{display:none;}
 .nb9box-lock-box{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:401;background:var(--surface);border-radius:var(--radius-lg);box-shadow:var(--shadow-md);width:100%;max-width:320px;padding:26px 24px;border:1px solid var(--border-strong);}
 .nb9box-lock-title{font-weight:800;font-size:13.5px;color:var(--ink);margin-bottom:18px;text-align:center;letter-spacing:.2px;}
+/* Impressão da Matriz 9Box: o cartão de login/overlay nunca deve ir para
+   o papel (a impressão só é possível depois de autenticado, com o
+   overlay já oculto — mas o .no-print reforça mesmo se, por algum
+   motivo, o navegador tentar imprimir com ele ainda visível). O painel
+   lateral "Posicionar Colaborador" (formulário de inputs) é ocultado
+   para a Matriz ganhar a largura cheia da folha, e os quadrantes perdem
+   a altura fixa (120px) e o corte por overflow para exibir TODOS os
+   nomes posicionados, sem cortar nenhum. */
+@media print{
+  .nb9box-lock-overlay{display:none !important;}
+  .nb-panel{display:none !important;}
+  .ninebox-wrap{display:block !important;}
+  .ninebox-grid{width:100% !important;grid-template-rows:repeat(3,auto) 26px !important;}
+  .nb-cell{overflow:visible !important;max-height:none !important;}
+  .nb-chips{overflow:visible !important;}
+}
 
 /* Survey */
 .survey-q{border-bottom:1px solid var(--border);padding:16px 0;}
@@ -632,7 +648,16 @@ tbody tr:hover{background:var(--surface-2);}
   .content-area{width:100%;}
   body{background:#fff;}
   .card{box-shadow:none;border:1px solid #ccc;break-inside:avoid;}
-  .tab-panel{display:block !important;}
+  /* Correção das "folhas fantasmas": só a aba ATIVA no momento da
+     impressão deve ir para o papel — as demais 9 abas (a maioria nunca
+     chegou a ser renderizada, pois cada aba só popula seu conteúdo real
+     quando o usuário a visita) ficavam com display:block (regra antiga
+     ".tab-panel{display:block!important;}") e geravam dezenas de páginas
+     em branco/quase vazias antes e depois do relatório desejado. Agora
+     TODAS as abas inativas ficam estritamente ocultas e sem altura no
+     papel, e apenas a .tab-panel.active é impressa. */
+  .tab-panel{display:none !important;height:0 !important;overflow:hidden !important;margin:0 !important;padding:0 !important;}
+  .tab-panel.active{display:block !important;height:auto !important;overflow:visible !important;}
 }
 /* Impressão isolada do Plano de PDI/Onboarding (botão "Imprimir Plano / Gerar PDF"):
    um clone do documento é anexado fora de .app só na hora de imprimir, e .app
@@ -1368,15 +1393,25 @@ tbody tr:hover{background:var(--surface-2);}
             <div class="hint" id="nb9boxLoginErro" style="display:none;margin-top:12px;color:var(--critical);text-align:center;"></div>
           </div>
         </div>
-        <div class="panel-header">
-          <div>
-            <div class="panel-title">Matriz 9Box — Comportamento x Desempenho</div>
-            <div class="panel-sub">Posicionamento de colaboradores por Desempenho x Comportamento. Persistido localmente.</div>
+        <!-- Container principal da Matriz 9Box: matriz, cards, nomes de
+             colaboradores e formulário lateral — TUDO fica com
+             display:none até a autenticação ser confirmada em
+             tentarNb9boxLogin(); volta a display:none imediatamente ao
+             sair da aba (bloquearNb9box(), chamado por switchTab()). Sem
+             isso, um overlay meramente sobreposto ainda permite inspecionar
+             o DOM ou haver falhas de empilhamento (z-index) que expõem os
+             dados por trás — ocultar o container é a garantia real de
+             sigilo, o overlay/login é só a experiência de tela. -->
+        <div id="nb9boxContent" style="display:none;">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">Matriz 9Box — Comportamento x Desempenho</div>
+              <div class="panel-sub">Posicionamento de colaboradores por Desempenho x Comportamento. Persistido localmente.</div>
+            </div>
           </div>
-        </div>
 
-        <div class="ninebox-wrap">
-          <div class="ninebox-grid" id="nineboxGrid"></div>
+          <div class="ninebox-wrap">
+            <div class="ninebox-grid" id="nineboxGrid"></div>
 
           <div class="card nb-panel">
             <h3>Posicionar Colaborador</h3>
@@ -1410,9 +1445,10 @@ tbody tr:hover{background:var(--surface-2);}
           </div>
         </div>
 
-        <div class="card section-gap">
-          <h3>Distribuição por Quadrante</h3>
-          <div class="chart-box sm"><canvas id="chartNineBox"></canvas></div>
+          <div class="card section-gap">
+            <h3>Distribuição por Quadrante</h3>
+            <div class="chart-box sm"><canvas id="chartNineBox"></canvas></div>
+          </div>
         </div>
       </section>
 
@@ -4248,6 +4284,11 @@ function tentarNb9boxLogin(){
     nb9boxAutenticado = true;
     erroEl.style.display = 'none';
     $('nb9boxLockOverlay').classList.add('hidden');
+    // Só agora — DEPOIS da autenticação confirmada — o container principal
+    // (matriz, cards, nomes de colaboradores, formulário lateral) é
+    // revelado. Antes disso ele nunca existiu visível na tela.
+    $('nb9boxContent').style.display = '';
+    renderNineBox();
     // Limpa os campos por segurança, para não deixar credenciais residuais
     // visíveis/preenchidas no DOM depois de liberar o acesso.
     $('nb9boxLoginCode').value = '';
@@ -4267,7 +4308,37 @@ function bloquearNb9box(){
   $('nb9boxLoginNomeDisplay').textContent = '';
   $('nb9boxLoginErro').style.display = 'none';
   $('nb9boxLockOverlay').classList.remove('hidden');
+  // Reoculta TODO o container principal — não apenas o overlay por cima
+  // dele — garantindo sigilo absoluto até o próximo login bem-sucedido.
+  $('nb9boxContent').style.display = 'none';
 }
+/* Plugin Chart.js "inline" (sem dependência externa/CDN adicional) que
+   desenha a contagem exata acima de cada barra — usado apenas no gráfico
+   "Distribuição por Quadrante" da Matriz 9Box, registrado só nesta
+   instância (não afeta nenhum outro gráfico do dashboard). Funciona tanto
+   em tela quanto na impressão, já que o canvas é rasterizado com o texto
+   já desenhado no momento da chamada de print(). */
+const CHART_DATA_LABELS_PLUGIN = {
+  id: 'contagemNoTopoDaBarra',
+  afterDatasetsDraw(chart){
+    const {ctx} = chart;
+    chart.data.datasets.forEach((dataset, dsIndex)=>{
+      const meta = chart.getDatasetMeta(dsIndex);
+      if(meta.hidden) return;
+      meta.data.forEach((bar, i)=>{
+        const valor = dataset.data[i];
+        if(valor===null || valor===undefined || valor===0) return;
+        ctx.save();
+        ctx.fillStyle = textColor();
+        ctx.font = '700 11px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(String(valor), bar.x, bar.y - 4);
+        ctx.restore();
+      });
+    });
+  }
+};
 function renderNineBox(){
   refreshEmployeeSelects();
   const ativosMat = new Set(getFilteredData().filter(isAtivo).map(e=>e.Matricula));
@@ -4288,7 +4359,8 @@ function renderNineBox(){
     counts.push(Object.entries(nineboxAssignments).filter(([mat,v])=> v.perf==perf && v.pot==pot && ativosMat.has(mat)).length);
   }}
   upsertChart('chartNineBox', {type:'bar', data:{labels, datasets:[{data:counts, backgroundColor:COR.c1, borderRadius:4, maxBarThickness:34}]},
-    options:{responsive:true,maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, ticks:{stepSize:1}, grid:{color:gridColor()}}, x:{grid:{display:false}, ticks:{autoSkip:false, maxRotation:30}}}}},
+    plugins:[CHART_DATA_LABELS_PLUGIN],
+    options:{responsive:true,maintainAspectRatio:false, layout:{padding:{top:18}}, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true, ticks:{stepSize:1}, grid:{color:gridColor()}}, x:{grid:{display:false}, ticks:{autoSkip:false, maxRotation:30}}}}},
     {labels, datasets:[{label:'Colaboradores', data:counts, color:COR.c1}]});
 }
 function posicionarColaborador(){
@@ -8471,7 +8543,10 @@ function linhaFlightRiskHtml(s){
     <td>${escapeHtml(s.unidade||'—')}</td>
     <td class="num">${s.score} pts</td>
     <td><span class="badge ${info.badge}">${info.label}</span></td>
-    <td class="no-print"><button class="btn btn-sm" data-frplano="${escapeHtml(s.matricula)}" type="button">${acaoFlightRiskLabel(s)}</button></td>
+    <td class="no-print" style="white-space:nowrap;">
+      <button class="btn btn-sm" data-frplano="${escapeHtml(s.matricula)}" type="button">${acaoFlightRiskLabel(s)}</button>
+      <button class="btn btn-sm btn-outline" data-frlimpar="${escapeHtml(s.matricula)}" type="button" title="Limpar Recomendação">🧹</button>
+    </td>
   </tr>`;
 }
 function renderFlightRisk(){
@@ -8570,6 +8645,17 @@ function copiarPlanoRetencao(){
   const original = btn.textContent;
   btn.textContent = '✅ Copiado!'; btn.disabled = true;
   setTimeout(()=>{ btn.textContent = original; btn.disabled = false; }, 1600);
+}
+/* "🧹 Limpar Recomendação" — a Matriz de Risco de Turnover não fixa uma
+   decisão por colaborador (Score/Nível são sempre recalculados a partir
+   dos dados atuais); o botão "Ação" apenas GERA um texto de recomendação
+   no quadro compartilhado abaixo da tabela. Limpar simplesmente devolve
+   esse quadro ao estado neutro, para o RH reavaliar o caso sem uma
+   recomendação de uma consulta anterior ainda visível na tela. */
+function limparRecomendacaoFlightRisk(){
+  const out = $('frPlanoOutput');
+  out.textContent = 'Clique na Ação sugerida de um colaborador da tabela acima.';
+  ultimoPlanoRetencaoTexto = '';
 }
 
 /* =====================================================================
@@ -10355,6 +10441,8 @@ function wireEvents(){
 
   // --- Analytics avançado: Flight Risk, Pareto de Desligamentos e One-Pager ---
   $('frTbody').addEventListener('click', e=>{
+    const btnLimpar = e.target.closest('[data-frlimpar]');
+    if(btnLimpar){ limparRecomendacaoFlightRisk(); return; }
     const btn = e.target.closest('[data-frplano]');
     if(!btn) return;
     gerarPlanoRetencao(btn.dataset.frplano);
