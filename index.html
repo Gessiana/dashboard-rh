@@ -519,13 +519,20 @@ tbody tr:hover{background:var(--surface-2);}
 .topbar-user-badge{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-secondary);background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 12px;white-space:nowrap;}
 .topbar-user-badge strong{color:var(--ink);}
 /* Impressão: o overlay de login nunca deve ir para o papel (só é possível
-   imprimir depois de autenticado, com #appRoot já revelado — o !important
-   reforça mesmo numa tentativa fora do fluxo normal). Regras de impressão
-   específicas da Matriz 9Box (painel lateral oculto, quadrantes sem corte
-   por overflow, para exibir TODOS os nomes posicionados). */
+   imprimir depois de autenticado, com #appRoot já revelado via style
+   inline — não precisa de regra de impressão para isso). IMPORTANTE: não
+   adicionar aqui um "#appRoot{display:...!important}" — um seletor de ID
+   tem especificidade maior que "body.printing-X-only > .app{display:none}"
+   (usado por TODOS os relatórios de impressão isolada: Parecer de R&S,
+   One-Pager, PDI, Férias, EPIs, Vencimentos, Aniversariantes, Checklist
+   Adm/Desl, Plano de Ação da Pesquisa) e VENCE esses seletores mesmo com
+   !important dos dois lados, fazendo a página inteira ser impressa em vez
+   do relatório isolado — bug já cometido e corrigido nesta revisão. Regras
+   de impressão específicas da Matriz 9Box (painel lateral oculto,
+   quadrantes sem corte por overflow, para exibir TODOS os nomes
+   posicionados). */
 @media print{
   .login-wall-overlay{display:none !important;}
-  #appRoot{display:flex !important;}
   .nb-panel{display:none !important;}
   .ninebox-wrap{display:block !important;}
   .ninebox-grid{width:100% !important;grid-template-rows:repeat(3,auto) 26px !important;}
