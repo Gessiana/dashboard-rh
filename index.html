@@ -126,6 +126,7 @@
    modos). Ativado via atributo [data-theme] no <html>, alternado pelo botão
    da topbar e persistido em localStorage. */
 [data-theme="dark"]{
+  color-scheme: dark;
   --bg:#0B1120;
   --surface:#1E293B;
   --surface-2:#0F172A;
@@ -349,13 +350,19 @@ select:focus, .btn-select:focus{outline:none;border-color:var(--accent);box-shad
 .filter-periodo-msg{font-size:10.5px;line-height:1.4;color:#DC2626;}
 [data-theme="dark"] .filter-periodo-msg{color:#F87171;}
 
-.sidebar-status-box{
-  background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-md);
-  padding:12px;display:flex;flex-direction:column;gap:5px;
-  font-size:11.3px;color:var(--muted);
-}
-.sidebar-status-box .status-line{display:flex;align-items:center;gap:7px;font-weight:600;color:var(--ink-secondary);}
-.sidebar-status-box .status-sub{padding-left:14px;}
+/* Bloco de status da fonte de dados — formato minimalista e discreto no
+   rodapé (sem card/borda/fundo destacado), centralizado, imediatamente
+   acima da assinatura "Made by Gessiana Carlesso". */
+.footer-status-box{max-width:640px;margin:0 auto 10px;text-align:center;}
+.footer-status-line{font-size:11px;color:var(--muted);line-height:1.7;}
+.status-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+
+.emp-resumo-parcelas{display:flex;gap:18px;flex-wrap:wrap;justify-content:space-between;margin-top:10px;padding:12px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-md);}
+.emp-resumo-parcelas > div{display:flex;flex-direction:column;gap:2px;min-width:150px;}
+.emp-resumo-parcelas span{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;font-weight:600;}
+.emp-resumo-parcelas strong{font-size:15px;color:var(--ink);}
+.emp-resumo-parcelas strong.emp-resumo-good{color:var(--good);}
+.emp-resumo-parcelas strong.emp-resumo-critical{color:var(--critical);}
 
 .content-area{flex:1;min-width:0;}
 
@@ -485,8 +492,13 @@ tbody tr:hover{background:var(--surface-2);}
 .form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;}
 .form-field{display:flex;flex-direction:column;gap:3px;}
 .form-field label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px;}
-.form-field input[type=text], .form-field input[type=date], .form-field input[type=password], .form-field textarea, .form-field select{
+.form-field input[type=text], .form-field input[type=date], .form-field input[type=password], .form-field input[type=number], .form-field textarea, .form-field select{
   padding:7px 9px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);min-width:160px;
+  background:var(--surface);color:var(--ink);
+}
+.form-field input[type=text]:disabled, .form-field input[type=date]:disabled, .form-field input[type=number]:disabled,
+.form-field input[type=text][readonly], .form-field input[type=date][readonly], .form-field input[type=number][readonly]{
+  background:var(--surface-2);color:var(--ink-secondary);
 }
 .form-field textarea{min-width:260px;min-height:70px;resize:vertical;}
 
@@ -1007,6 +1019,7 @@ tbody tr:hover{background:var(--surface-2);}
       <button class="nav-item nav-tab-btn" data-tab="vencimentos-legais"><span class="ico">⚠️</span><span class="lbl">Vencimentos Legais</span></button>
       <button class="nav-item nav-tab-btn" data-tab="tools"><span class="ico">🛠️</span><span class="lbl">Calculadoras &amp; Geradores</span></button>
       <button class="nav-item nav-tab-btn" data-tab="recrutamento"><span class="ico">🎯</span><span class="lbl">R&amp;S / Vagas</span></button>
+      <button class="nav-item nav-tab-btn" data-tab="emprestimos"><span class="ico">💳</span><span class="lbl">Empréstimos</span></button>
     </nav>
   </header>
 
@@ -1018,10 +1031,10 @@ tbody tr:hover{background:var(--surface-2);}
         <div class="topbar-actions">
           <div class="topbar-user-badge no-print" id="topbarUserBadge">👤 <strong id="topbarUserNome">—</strong> | <span id="topbarUserCargo">—</span></div>
           <button class="btn btn-ghost no-print" id="btnAuditoriaLogs" type="button" title="Rastreabilidade de Movimentações Gerenciais" style="display:none;">🕸️</button>
-          <button class="btn" id="btnToggleSource">🔄 Fonte de Dados</button>
-          <button class="btn btn-ghost" id="btnToggleTheme" type="button">🌙 Modo Escuro</button>
-          <button class="btn btn-ghost" id="btnPrint">🖨️ Imprimir / PDF</button>
-          <button class="btn btn-ghost" id="btnOnePager" type="button">📑 One-Pager Executivo</button>
+          <button class="btn" id="btnToggleSource" title="Fonte de Dados">🔄</button>
+          <button class="btn btn-ghost" id="btnToggleTheme" type="button" title="Modo Escuro">🌙</button>
+          <button class="btn btn-ghost" id="btnPrint" title="Imprimir / PDF">🖨️</button>
+          <button class="btn btn-ghost" id="btnOnePager" type="button" title="One-Pager Executivo">📑</button>
           <button class="btn btn-outline no-print" id="btnLogoutGlobal" type="button">🚪 Sair</button>
         </div>
       </div>
@@ -1097,13 +1110,6 @@ tbody tr:hover{background:var(--surface-2);}
           </div>
           <div id="filterPeriodoMsg" class="filter-periodo-msg" style="display:none;"></div>
           <button type="button" id="btnLimparPeriodo" class="btn btn-outline btn-sm" style="margin-top:2px;">Limpar período (usar últimos 12 meses)</button>
-        </div>
-
-        <div class="sidebar-status-box">
-          <div class="status-line"><span class="dot"></span><span id="sourceStatusText">Fonte atual: Mock Data</span></div>
-          <div class="status-sub" id="recordCountText">0 registros carregados</div>
-          <div class="status-sub" id="lastUpdateText">—</div>
-          <div id="gsheetLiveBadge"></div>
         </div>
       </aside>
 
@@ -2526,6 +2532,196 @@ tbody tr:hover{background:var(--surface-2);}
         </div>
       </section>
 
+      <!-- ---------- TAB: EMPRÉSTIMOS ---------- -->
+      <section class="tab-panel" id="tab-emprestimos">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">💳 Gestão de Empréstimos (Próprios e Consignados)</div>
+            <div class="panel-sub">Cadastro, cronograma de parcelas e acompanhamento de quitação — sincronizado em tempo real via Google Sheets para todos os usuários.</div>
+          </div>
+          <button class="btn btn-primary no-print" id="btnNovoEmprestimo" type="button">➕ Novo Empréstimo</button>
+        </div>
+
+        <div class="card section-gap">
+          <div class="form-row" style="margin-bottom:0;align-items:flex-end;">
+            <div class="form-field">
+              <label>Loja</label>
+              <select id="empFilterLoja" style="min-width:200px;"><option value="todas">Todas as Lojas</option></select>
+            </div>
+            <div class="form-field">
+              <label>Colaborador</label>
+              <input type="text" id="empFilterColaborador" placeholder="Buscar por nome..." style="min-width:220px;">
+            </div>
+            <div class="form-field">
+              <label>Status</label>
+              <select id="empFilterStatus" style="min-width:180px;">
+                <option value="todos">Todos</option>
+                <option value="Ativo">🔵 Ativo</option>
+                <option value="Quitado">🟢 Quitado</option>
+                <option value="Inadimplente">🔴 Inadimplente</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-4">
+          <div class="card kpi">
+            <div class="kpi-label">Total em Débito Hoje</div>
+            <div class="kpi-value critical" id="emp-kpi-debito">R$ 0,00</div>
+            <div class="kpi-foot">Saldo ainda a receber — no filtro atual</div>
+          </div>
+          <div class="card kpi">
+            <div class="kpi-label">Empréstimos Ativos</div>
+            <div class="kpi-value orange" id="emp-kpi-ativos">0</div>
+            <div class="kpi-foot" id="emp-kpi-ativos-foot">Em andamento — no filtro atual</div>
+          </div>
+          <div class="card kpi">
+            <div class="kpi-label">Empréstimos Quitados</div>
+            <div class="kpi-value good" id="emp-kpi-quitados">0</div>
+            <div class="kpi-foot">Encerrados — no filtro atual</div>
+          </div>
+          <div class="card kpi">
+            <div class="kpi-label">Maior Empréstimo Ativo</div>
+            <div class="kpi-value" id="emp-kpi-maior">R$ 0,00</div>
+            <div class="kpi-foot" id="emp-kpi-maior-nome">—</div>
+          </div>
+        </div>
+
+        <div class="grid grid-2 section-gap">
+          <div class="card">
+            <h3>Distribuição por Loja e Setor</h3>
+            <div class="chart-box"><canvas id="chartEmpDistribuicao"></canvas></div>
+          </div>
+          <div class="card">
+            <h3>Empréstimos por Colaborador</h3>
+            <div class="chart-box"><canvas id="chartEmpPorColaborador"></canvas></div>
+          </div>
+        </div>
+        <div class="grid grid-2 section-gap">
+          <div class="card">
+            <h3>Comparativo: Valor Total Pego vs. Quitado</h3>
+            <div class="chart-box"><canvas id="chartEmpPegoQuitado"></canvas></div>
+          </div>
+          <div class="card">
+            <h3>🏆 Ranking — Maiores Empréstimos Ativos</h3>
+            <div class="table-wrap" style="max-height:280px;">
+              <table>
+                <thead><tr><th>#</th><th>Colaborador</th><th>Loja</th><th>Valor Total</th><th>Saldo Devedor</th></tr></thead>
+                <tbody id="empRankingTbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="card section-gap">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+            <h3 style="margin-bottom:0;">Tabela de Gestão de Empréstimos</h3>
+            <div class="hint" id="empCountInfo"></div>
+          </div>
+          <div class="table-wrap" style="max-height:560px;">
+            <table>
+              <thead><tr>
+                <th>Colaborador</th><th>Loja</th><th>Setor</th><th>Tipo</th><th>Valor Total</th><th>Parcela</th>
+                <th>Parcelas Quitadas</th><th>Status</th><th>Contrato Assinado?</th><th style="width:210px;">Ações</th>
+              </tr></thead>
+              <tbody id="empTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- MODAL: NOVO / EDITAR EMPRÉSTIMO + CRONOGRAMA DE PARCELAS (mesma
+           estrutura/CSS dos demais modais: .op-modal-overlay/.op-modal/.op-modal-header). -->
+      <div class="op-modal-overlay hidden" id="empModalOverlay">
+        <div class="op-modal" style="max-width:780px;">
+          <div class="op-modal-header">
+            <div class="op-modal-title" id="empModalTitulo">➕ Novo Empréstimo</div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-ghost btn-sm" id="btnFecharEmpModal" type="button">✕ Fechar</button>
+            </div>
+          </div>
+          <div class="op-modal-body">
+            <input type="hidden" id="empId">
+            <div class="form-row">
+              <div class="form-field">
+                <label>Colaborador</label>
+                <select id="empColaboradorSelect" style="min-width:260px;"></select>
+              </div>
+              <div class="form-field">
+                <label>Loja</label>
+                <input type="text" id="empLoja" readonly style="background:var(--surface-2);">
+              </div>
+              <div class="form-field">
+                <label>Setor</label>
+                <input type="text" id="empSetor" readonly style="background:var(--surface-2);">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-field">
+                <label>Tipo de Empréstimo</label>
+                <select id="empTipo">
+                  <option value="Proprio">Empréstimo Próprio</option>
+                  <option value="Consignado">Consignado</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Valor Total do Empréstimo (R$)</label>
+                <input type="number" id="empValorTotal" min="0" step="0.01" placeholder="0,00">
+              </div>
+              <div class="form-field">
+                <label>Qtd. de Parcelas</label>
+                <input type="number" id="empQtdParcelas" min="1" step="1" placeholder="Ex.: 12">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-field">
+                <label>Valor de Cada Parcela (R$)</label>
+                <input type="number" id="empValorParcela" min="0" step="0.01" placeholder="Calculado automaticamente" readonly style="background:var(--surface-2);">
+              </div>
+              <div class="form-field">
+                <label>Data de Início</label>
+                <input type="date" id="empDataInicio">
+              </div>
+              <div class="form-field" style="justify-content:flex-end;">
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                  <input type="checkbox" id="empContratoAssinado" style="width:18px;height:18px;">
+                  Contrato Assinado?
+                </label>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin:6px 0 14px;">
+              <button class="btn btn-outline btn-sm" id="btnGerarCronograma" type="button">📅 Gerar / Atualizar Cronograma de Parcelas</button>
+            </div>
+
+            <div id="empCronogramaWrap" class="hidden">
+              <h3 style="font-size:13px;">Cronograma de Parcelas (datas e quitação editáveis individualmente)</h3>
+              <div class="table-wrap" style="max-height:280px;">
+                <table>
+                  <thead><tr><th>Nº</th><th>Vencimento</th><th>Valor (R$)</th><th>Paga?</th><th>Pago em</th></tr></thead>
+                  <tbody id="empParcelasTbody"></tbody>
+                </table>
+              </div>
+              <div class="emp-resumo-parcelas" id="empResumoParcelas">
+                <div><span>Valor Total do Empréstimo</span><strong id="empResumoTotal">R$ 0,00</strong></div>
+                <div><span>Total Pago</span><strong id="empResumoPago" class="emp-resumo-good">R$ 0,00</strong></div>
+                <div><span>Saldo Restante a Pagar</span><strong id="empResumoSaldo" class="emp-resumo-critical">R$ 0,00</strong></div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+              <button class="btn btn-primary" id="btnSalvarEmprestimo" type="button">💾 Salvar Empréstimo</button>
+              <button class="btn btn-ghost" id="btnQuitarEmprestimoModal" type="button">✅ Quitar Empréstimo</button>
+              <button class="btn btn-danger" id="btnExcluirEmprestimoModal" type="button">🗑️ Excluir</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer-status-box">
+        <div class="footer-status-line">Dados sincronizados diretamente da planilha via Google Apps Script (JSONP).</div>
+        <div class="footer-status-line"><span id="sourceStatusText">Fonte: Google Sheets</span> · <span id="recordCountText">Registros: 0</span> · <span id="lastUpdateText">Atualizado: —</span></div>
+        <div id="gsheetLiveBadge"></div>
+      </div>
       <div class="footer-note">Sistema interno de RH — Grupo Brasmetal. Dados sensíveis (CPF, saúde) não são coletados. Layout otimizado para impressão/exportação em PDF.<br>Made by Gessiana Carlesso</div>
       </main>
     </div>
@@ -2735,7 +2931,10 @@ function aplicarTema(theme, opts){
   currentTheme = theme === 'dark' ? 'dark' : 'light';
   document.documentElement.setAttribute('data-theme', currentTheme);
   const btn = $('btnToggleTheme');
-  if(btn) btn.textContent = currentTheme === 'dark' ? '☀️ Modo Claro' : '🌙 Modo Escuro';
+  if(btn){
+    btn.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
+    btn.title = currentTheme === 'dark' ? 'Modo Claro' : 'Modo Escuro';
+  }
   // Atualiza a cor padrão de texto dos gráficos Chart.js (se a lib já carregou).
   if(typeof Chart !== 'undefined' && Chart.defaults){
     Chart.defaults.color = textColor();
@@ -2815,7 +3014,7 @@ const SISTEMA_USUARIOS = {
    PDI & Onboarding — e também Analytics/Kanban, que não constavam da lista
    de liberadas). O botão de Auditoria (🕸️) é tratado à parte, nunca
    incluído aqui. */
-const ABAS_LIBERADAS_RESTRITO_DP = ['overview','birthdays','vencimentos-legais','recrutamento','tools'];
+const ABAS_LIBERADAS_RESTRITO_DP = ['overview','birthdays','vencimentos-legais','recrutamento','tools','emprestimos'];
 const LOGIN_SESSION_KEY = 'hr_login_sessao_v1';
 let usuarioLogado = null;
 
@@ -3319,9 +3518,9 @@ function setDsMsg(msg, isErr){
   el.innerHTML = msg? `<div class="ds-msg ${isErr?'err':'ok'}">${escapeHtml(msg)}</div>` : '';
 }
 function afterDataLoaded(){
-  $('sourceStatusText').textContent = 'Fonte atual: ' + dataSource.tipo + (dataSource.detalhe? ' ('+dataSource.detalhe+')':'');
-  $('recordCountText').textContent = rawData.length + ' registros carregados';
-  $('lastUpdateText').textContent = dataSource.atualizadoEm? ('Atualizado às ' + dataSource.atualizadoEm.toLocaleString('pt-BR')) : '—';
+  $('sourceStatusText').textContent = 'Fonte: ' + dataSource.tipo + (dataSource.detalhe? ' ('+dataSource.detalhe+')':'');
+  $('recordCountText').textContent = 'Registros: ' + rawData.length;
+  $('lastUpdateText').textContent = 'Atualizado: ' + (dataSource.atualizadoEm? dataSource.atualizadoEm.toLocaleString('pt-BR') : '—');
   atualizarBadgeConexao();
   atualizarSetoresDinamicos();
   atualizarUnidadesDinamicas();
@@ -3418,6 +3617,130 @@ function converterParaCSV(url){
   return url;
 }
 const GSHEET_URL_PADRAO = 'https://script.google.com/macros/s/AKfycbwwGAVqwFpFGjCml4Vn5J0XLHZ4IgE_L6rCkj84HGkEL72YokgxWWXKI1GF8Iv6DH5w/exec';
+/* =====================================================================
+   SINCRONIZAÇÃO GENÉRICA COMPARTILHADA (Google Sheets via JSONP)
+   ---------------------------------------------------------------------
+   Reaproveitável por múltiplos módulos (Empréstimos, EPI, Kanban,
+   R&S/Vagas, 9Box) — mesmo mecanismo JSONP imune a CORS já usado em
+   Férias/PDI-TD/Checklist Adm-Desl (buscarCSVXViaJSONP/
+   enviarRegistroXViaJSONP), generalizado aqui para não repetir ~100
+   linhas de boilerplate por módulo novo. Não altera em nada o mecanismo
+   específico já existente de Férias/TD/AdmDesl/Parecer RS, que continua
+   funcionando exatamente como estava.
+   ===================================================================== */
+let __jsonpGenericoContador = 0;
+function buscarCSVGenericoViaJSONP(abaNome){
+  return new Promise((resolve, reject)=>{
+    // Sem hífen: este id vira parte do nome da função de callback JSONP
+    // (carregarGenJSONP_<meuId>), que precisa ser um identificador JS válido
+    // — um callback com hífen é rejeitado pelo Google com HTTP 400 antes de
+    // sequer chegar ao doGet().
+    const meuId = 'jsonp_gen_' + (++__jsonpGenericoContador) + '_' + Date.now().toString(36);
+    let concluido = false;
+    const limpar = () => { const tag = document.getElementById(meuId); if(tag) tag.remove(); };
+    const timer = setTimeout(()=>{
+      if(concluido) return; concluido = true;
+      delete window['__jgR_'+meuId]; delete window['__jgJ_'+meuId];
+      limpar();
+      reject(new Error('Tempo limite excedido ao conectar ao Apps Script ('+abaNome+').'));
+    }, 20000);
+    window['__jgR_'+meuId] = (csv)=>{ if(concluido) return; concluido=true; clearTimeout(timer); delete window['__jgR_'+meuId]; delete window['__jgJ_'+meuId]; resolve(csv); };
+    window['__jgJ_'+meuId] = (err)=>{ if(concluido) return; concluido=true; clearTimeout(timer); delete window['__jgR_'+meuId]; delete window['__jgJ_'+meuId]; limpar(); reject(err); };
+    window['carregarGenJSONP_'+meuId] = function(csvText){
+      const tag = document.getElementById(meuId); if(tag) tag.remove();
+      if(!csvText || !csvText.trim()){
+        if(window['__jgJ_'+meuId]) window['__jgJ_'+meuId](new Error('O Apps Script respondeu, mas sem conteúdo (CSV vazio).'));
+        return;
+      }
+      if(window['__jgR_'+meuId]) window['__jgR_'+meuId](csvText);
+    };
+    const sep = GSHEET_URL_PADRAO.indexOf('?')===-1?'?':'&';
+    const s = document.createElement('script');
+    s.id = meuId;
+    s.src = GSHEET_URL_PADRAO + sep + 'aba=' + encodeURIComponent(abaNome) + '&callback=carregarGenJSONP_' + meuId;
+    s.onerror = () => { if(window['__jgJ_'+meuId]) window['__jgJ_'+meuId](new Error('Falha ao conectar ao Apps Script.')); };
+    document.head.appendChild(s);
+  });
+}
+function enviarRegistroGenericoViaJSONP(action, registro){
+  return new Promise((resolve, reject)=>{
+    // Idem: sem hífen, pelo mesmo motivo de buscarCSVGenericoViaJSONP acima.
+    const meuId = 'jsonp_gen_save_' + (++__jsonpGenericoContador) + '_' + Date.now().toString(36);
+    let concluido = false;
+    const limpar = () => { const tag = document.getElementById(meuId); if(tag) tag.remove(); };
+    const timer = setTimeout(()=>{
+      if(concluido) return; concluido = true;
+      delete window['__jgSR_'+meuId]; delete window['__jgSJ_'+meuId];
+      limpar();
+      reject(new Error('Tempo limite excedido ao salvar na planilha.'));
+    }, 20000);
+    window['__jgSR_'+meuId] = (dados)=>{ if(concluido) return; concluido=true; clearTimeout(timer); delete window['__jgSR_'+meuId]; delete window['__jgSJ_'+meuId]; resolve(dados); };
+    window['__jgSJ_'+meuId] = (err)=>{ if(concluido) return; concluido=true; clearTimeout(timer); delete window['__jgSR_'+meuId]; delete window['__jgSJ_'+meuId]; limpar(); reject(err); };
+    window['carregarGenSalvarJSONP_'+meuId] = function(dados){
+      const tag = document.getElementById(meuId); if(tag) tag.remove();
+      if(!dados){ if(window['__jgSJ_'+meuId]) window['__jgSJ_'+meuId](new Error('Resposta vazia do Apps Script.')); return; }
+      if(window['__jgSR_'+meuId]) window['__jgSR_'+meuId](dados);
+    };
+    const json = JSON.stringify(registro);
+    const payload = btoa(unescape(encodeURIComponent(json)));
+    const sep = GSHEET_URL_PADRAO.indexOf('?')===-1?'?':'&';
+    const s = document.createElement('script');
+    s.id = meuId;
+    s.src = GSHEET_URL_PADRAO + sep + 'action=' + encodeURIComponent(action) + '&payload=' + encodeURIComponent(payload) + '&callback=carregarGenSalvarJSONP_' + meuId;
+    s.onerror = () => { if(window['__jgSJ_'+meuId]) window['__jgSJ_'+meuId](new Error('Falha ao conectar ao Apps Script.')); };
+    document.head.appendChild(s);
+  });
+}
+/* Aviso único de falha de gravação compartilhada — reutilizado pelos 5
+   módulos migrados, mesmo texto/espírito do aviso já usado em Férias. */
+function avisarFalhaSincronizacaoCompartilhada(modulo, err){
+  console.error('Falha ao salvar ('+modulo+') na planilha compartilhada:', err);
+  alert('⚠️ Esta alteração ('+modulo+') foi salva apenas neste navegador — não foi possível gravar na planilha compartilhada agora ('+(err&&err.message?err.message:String(err))+'). Outros usuários do dashboard não verão esta mudança até a sincronização funcionar.');
+}
+/* ---------------------------------------------------------------------
+   POLLING AUTOMÁTICO LEVE — Apps Script Web App não tem push/websocket,
+   então "tempo real" aqui significa: grava imediatamente ao salvar (já
+   garantido pelos módulos acima) + relê a planilha em intervalos curtos
+   para refletir o que outros usuários gravaram, sem exigir F5 manual.
+   Roda apenas com a aba do navegador em primeiro plano (poupa cota do
+   Apps Script quando o dashboard está minimizado/em segundo plano) e
+   nunca sobrepõe módulos que já sincronizam por si (Pesquisa Interna,
+   Férias, TD/PDI, Checklist Adm/Desl já tinham seu próprio ciclo — aqui
+   entram no mesmo relógio para também deixarem de depender só do clique
+   manual em "Atualizar Dados em Tempo Real"). */
+const INTERVALO_POLLING_COMPARTILHADO_MS = 45000;
+let __pollingCompartilhadoTimer = null;
+/* Executa as 9 sincronizações compartilhadas em SEQUÊNCIA (uma de cada vez,
+   nunca em paralelo). Disparar todas simultaneamente (como antes) fazia as
+   últimas da lista falharem com erro de conexão de forma intermitente —
+   o Apps Script/navegador recusa chamadas quando há muitas requisições
+   concorrentes para a mesma implantação ao mesmo tempo. Rodando uma após a
+   outra, cada chamada tem a mesma confiabilidade de um teste isolado. */
+async function sincronizarTodosModulosCompartilhados(silent){
+  const tarefas = [
+    sincronizarPesquisaInternaAutomatica,
+    sincronizarFeriasAutomatica,
+    sincronizarTDAutomatica,
+    sincronizarAdmDeslAutomatica,
+    sincronizarEmprestimosAutomatica,
+    sincronizarEpiAutomatica,
+    sincronizarKanbanAutomatica,
+    sincronizarRsVagasAutomatica,
+    sincronizarNineboxAutomatica
+  ];
+  for(const tarefa of tarefas){
+    try{ await tarefa(silent); }
+    catch(err){ if(!silent) console.warn('Sincronização de módulo compartilhado falhou:', err); }
+  }
+}
+function iniciarPollingSincronizacaoCompartilhada(){
+  if(__pollingCompartilhadoTimer) return; // evita múltiplos timers (ex.: reload de init)
+  __pollingCompartilhadoTimer = setInterval(()=>{
+    if(document.hidden) return; // aba em segundo plano — não gasta cota do Apps Script
+    sincronizarTodosModulosCompartilhados(true);
+  }, INTERVALO_POLLING_COMPARTILHADO_MS);
+}
+
 
 /* ---------------------------------------------------------------------
    JSONP — método de carga que nunca é bloqueado por CORS, mesmo com a
@@ -3530,17 +3853,13 @@ async function carregarDadosIniciais(){
     loadMockData();
     setDsMsg('Não foi possível carregar a planilha em tempo real agora (Apps Script indisponível) — exibindo Mock Data. Use "🔄 Atualizar Dados em Tempo Real" para tentar novamente, ou "🔗 Testar link em nova aba" para conferir se o link está público.', true);
   }
-  // Sincronização automática da aba PESQUISA_INTERNA — não bloqueia a carga
-  // principal do dashboard (fire-and-forget) e falha silenciosamente se a
-  // aba/parâmetro não existir ou não for suportado pelo backend.
-  sincronizarPesquisaInternaAutomatica(true);
-  // Idem para a Gestão de Férias (FERIAS_REGISTROS) — fire-and-forget,
-  // não bloqueia a carga principal do dashboard.
-  sincronizarFeriasAutomatica(true);
-  // Idem para a Matriz de T&D do PDI/Onboarding (TD_PLANOS_REGISTROS) e
-  // para o Checklist de Admissão & Desligamento (ADM_DESL_CHECKLISTS).
-  sincronizarTDAutomatica(true);
-  sincronizarAdmDeslAutomatica(true);
+  // Sincronização automática dos 9 módulos compartilhados (Pesquisa Interna,
+  // Férias, T&D/PDI, Checklist Adm/Desl, Empréstimos, EPI, Kanban, R&S/Vagas
+  // e 9Box) — fire-and-forget (não bloqueia a carga principal do dashboard),
+  // mas executada em SEQUÊNCIA internamente para não sobrecarregar o Apps
+  // Script com chamadas simultâneas (ver sincronizarTodosModulosCompartilhados).
+  sincronizarTodosModulosCompartilhados(true);
+  iniciarPollingSincronizacaoCompartilhada();
 }
 function handleFiles(fileList){
   const file = fileList[0]; if(!file) return;
@@ -3688,6 +4007,7 @@ function renderTab(tab){
       case 'pdi-onboarding': renderTDPanel(); break;
       case 'vencimentos-legais': renderVencimentosLegais(); break;
       case 'recrutamento': renderRsPanel(); break;
+      case 'emprestimos': renderEmprestimosTab(); break;
     }
   }catch(err){
     console.error('Erro ao renderizar a aba "'+tab+'":', err);
@@ -3933,7 +4253,7 @@ function imprimirMuralAniversariantes(){
 function refreshEmployeeSelects(){
   const ativos = getFilteredData().filter(isAtivo).slice().sort((a,b)=>a.Nome.localeCompare(b.Nome));
   const opts = ativos.map(e=>`<option value="${escapeHtml(e.Matricula)}">${escapeHtml(e.Nome)} — ${escapeHtml(e.Cargo)}</option>`).join('');
-  ['msgEmployeeSelect','nbEmployeeSelect'].forEach(id=>{ const el=$(id); if(el){ const cur=el.value; el.innerHTML = opts || '<option value="">Nenhum colaborador ativo no filtro</option>'; if(cur) el.value=cur; } });
+  ['msgEmployeeSelect','nbEmployeeSelect','empColaboradorSelect'].forEach(id=>{ const el=$(id); if(el){ const cur=el.value; el.innerHTML = opts || '<option value="">Nenhum colaborador ativo no filtro</option>'; if(cur) el.value=cur; } });
   // quickMsgColabSelect (Central de Mensagens Rápidas) mantém uma opção em
   // branco, pois o campo "Nome Avulso" permite gerar mensagens sem vínculo
   // com um colaborador/candidato já cadastrado na base.
@@ -4337,6 +4657,48 @@ function loadTasksFromStorage(){
   saveTasks();
 }
 function saveTasks(){ try{ localStorage.setItem('hr_kanban_tasks_v1', JSON.stringify(tasks)); }catch(e){} }
+/* ---------------------------------------------------------------------
+   PERSISTÊNCIA COMPARTILHADA (Google Sheets, aba KANBAN_TASKS) — mesmo
+   mecanismo JSONP genérico de Empréstimos/Férias/TD/AdmDesl. localStorage
+   continua como cache local; KANBAN_TASKS passa a ser a fonte de verdade
+   compartilhada entre todos que acessam o link do dashboard.
+   --------------------------------------------------------------------- */
+const KANBAN_SHEET_ABA = 'KANBAN_TASKS';
+async function sincronizarKanbanAutomatica(silent){
+  try{
+    const csvText = await buscarCSVGenericoViaJSONP(KANBAN_SHEET_ABA);
+    if(!csvText || !csvText.trim()) return;
+    const linhas = parseCSVText(csvText);
+    if(!linhas.length) return;
+    const temColunaId = Object.keys(linhas[0]).some(h=> normalizeHeaderKey(h)==='id');
+    if(!temColunaId){
+      if(!silent) console.warn('KANBAN_TASKS: cabeçalho inesperado na resposta — sincronização ignorada.');
+      return;
+    }
+    const novasTasks = [];
+    linhas.forEach(l=>{
+      const id = (l.Id||'').trim();
+      if(!id) return;
+      const excluido = String(l.Excluido||'').trim().toUpperCase()==='TRUE';
+      if(excluido) return;
+      novasTasks.push({id, title:(l.Title||'').trim(), owner:(l.Owner||'').trim(), prio:(l.Prio||'').trim(), due:(l.Due||'').trim(), status:(l.Status||'').trim()});
+    });
+    if(novasTasks.length){ tasks = novasTasks; saveTasks(); if(document.getElementById('kanbanBoard')) renderKanban(); }
+  }catch(err){
+    if(!silent) console.warn('KANBAN_TASKS: sincronização automática não disponível agora.', err);
+  }
+}
+async function salvarTarefaKanbanNaPlanilha(task, excluido){
+  try{
+    const registro = {id:task.id, title:task.title||'', owner:task.owner||'', prio:task.prio||'', due:task.due||'', status:task.status||'', excluido: excluido ? 'TRUE':'FALSE'};
+    const resp = await enviarRegistroGenericoViaJSONP('salvarKanbanTask', registro);
+    if(resp && resp.error) throw new Error(resp.error);
+    return true;
+  }catch(err){
+    avisarFalhaSincronizacaoCompartilhada('Tarefa Kanban', err);
+    return false;
+  }
+}
 function prioClass(p){ return p==='Alta'?'prio-alta':(p==='Média'?'prio-media':'prio-baixa'); }
 function renderKanban(){
   ['Pendente','Em Andamento','Concluído'].forEach(status=>{
@@ -4361,9 +4723,13 @@ function moveStatus(id, dir){
   const cols = ['Pendente','Em Andamento','Concluído'];
   const t = tasks.find(x=>x.id===id); if(!t) return;
   const idx = cols.indexOf(t.status); const ni = idx+dir;
-  if(ni>=0 && ni<cols.length){ t.status = cols[ni]; saveTasks(); renderKanban(); }
+  if(ni>=0 && ni<cols.length){ t.status = cols[ni]; saveTasks(); renderKanban(); salvarTarefaKanbanNaPlanilha(t, false); }
 }
-function deleteTask(id){ tasks = tasks.filter(t=>t.id!==id); saveTasks(); renderKanban(); }
+function deleteTask(id){
+  const t = tasks.find(x=>x.id===id);
+  tasks = tasks.filter(t=>t.id!==id); saveTasks(); renderKanban();
+  if(t) salvarTarefaKanbanNaPlanilha(t, true);
+}
 function wireKanbanDnD(){
   document.querySelectorAll('.kcard').forEach(card=>{
     card.addEventListener('dragstart', e=>{ card.classList.add('dragging'); e.dataTransfer.setData('text/plain', card.dataset.id); });
@@ -4376,7 +4742,7 @@ function wireKanbanDnD(){
       e.preventDefault(); col.classList.remove('kcol-dragover');
       const id = e.dataTransfer.getData('text/plain');
       const t = tasks.find(x=>x.id===id);
-      if(t){ t.status = col.dataset.status; saveTasks(); renderKanban(); }
+      if(t){ t.status = col.dataset.status; saveTasks(); renderKanban(); salvarTarefaKanbanNaPlanilha(t, false); }
     });
   });
 }
@@ -4490,6 +4856,53 @@ function loadNineboxFromStorage(){
   try{ const raw = localStorage.getItem('hr_9box_v1'); nineboxAssignments = raw? JSON.parse(raw) : {}; }catch(e){ nineboxAssignments = {}; }
 }
 function saveNinebox(){ try{ localStorage.setItem('hr_9box_v1', JSON.stringify(nineboxAssignments)); }catch(e){} }
+/* ---------------------------------------------------------------------
+   PERSISTÊNCIA COMPARTILHADA (Google Sheets, aba NINEBOX_POSICOES) —
+   mesmo mecanismo JSONP genérico de Empréstimos/Férias/TD/AdmDesl.
+   localStorage continua como cache local; NINEBOX_POSICOES passa a ser a
+   fonte de verdade compartilhada entre todos que acessam o link do
+   dashboard. O histórico de movimentações (gráfico "Evolução por PDI")
+   permanece por navegador — não é compartilhado nesta fase.
+   --------------------------------------------------------------------- */
+const NINEBOX_SHEET_ABA = 'NINEBOX_POSICOES';
+async function sincronizarNineboxAutomatica(silent){
+  try{
+    const csvText = await buscarCSVGenericoViaJSONP(NINEBOX_SHEET_ABA);
+    if(!csvText || !csvText.trim()) return;
+    const linhas = parseCSVText(csvText);
+    if(!linhas.length) return;
+    const temColunaMatricula = Object.keys(linhas[0]).some(h=> normalizeHeaderKey(h)==='matricula');
+    if(!temColunaMatricula){
+      if(!silent) console.warn('NINEBOX_POSICOES: cabeçalho inesperado na resposta — sincronização ignorada.');
+      return;
+    }
+    const novoState = {};
+    linhas.forEach(l=>{
+      const mat = (l.Matricula||'').trim();
+      if(!mat) return;
+      const excluido = String(l.Excluido||'').trim().toUpperCase()==='TRUE';
+      if(excluido) return;
+      const perf = (l.Perf||'').trim(), pot = (l.Pot||'').trim();
+      if(!perf || !pot) return;
+      novoState[mat] = {perf, pot, prontidao:(l.Prontidao||'').trim()};
+    });
+    if(Object.keys(novoState).length){ nineboxAssignments = novoState; saveNinebox(); if(document.getElementById('nineboxGrid')) renderNineBox(); }
+  }catch(err){
+    if(!silent) console.warn('NINEBOX_POSICOES: sincronização automática não disponível agora.', err);
+  }
+}
+async function salvarPosicaoNineboxNaPlanilha(matricula, excluido){
+  try{
+    const pos = nineboxAssignments[matricula] || {};
+    const registro = {matricula, perf:pos.perf||'', pot:pos.pot||'', prontidao:pos.prontidao||'', excluido: excluido ? 'TRUE':'FALSE'};
+    const resp = await enviarRegistroGenericoViaJSONP('salvarNinebox', registro);
+    if(resp && resp.error) throw new Error(resp.error);
+    return true;
+  }catch(err){
+    avisarFalhaSincronizacaoCompartilhada('Posicionamento 9Box', err);
+    return false;
+  }
+}
 
 /* =====================================================================
    HISTÓRICO DE MOVIMENTAÇÃO 9BOX (Evolução por PDI)
@@ -4818,6 +5231,7 @@ function posicionarColaborador(){
   renderNineBox();
   const emp = rawData.find(e=>e.Matricula===mat);
   registrarLogAuditoria('Posicionamento na Matriz 9Box: '+(emp?emp.Nome:mat)+' → '+(NB_LABELS[pot]||{})[perf]);
+  salvarPosicaoNineboxNaPlanilha(mat, false);
 }
 function gerar9BoxActionPlan(){
   const out = $('nineboxActionOutput');
@@ -8158,6 +8572,56 @@ function saveEpiState(){
   try{ localStorage.setItem(EPI_STORAGE_KEY, JSON.stringify(epiState)); }
   catch(err){ console.error('Falha ao salvar hr_epi_deliveries_v1:', err); }
 }
+/* ---------------------------------------------------------------------
+   PERSISTÊNCIA COMPARTILHADA (Google Sheets, aba EPI_REGISTROS) — mesmo
+   mecanismo JSONP genérico de Empréstimos/Férias/TD/AdmDesl. localStorage
+   continua como cache local; EPI_REGISTROS passa a ser a fonte de verdade
+   compartilhada entre todos que acessam o link do dashboard.
+   --------------------------------------------------------------------- */
+const EPI_SHEET_ABA = 'EPI_REGISTROS';
+async function sincronizarEpiAutomatica(silent){
+  try{
+    const csvText = await buscarCSVGenericoViaJSONP(EPI_SHEET_ABA);
+    if(!csvText || !csvText.trim()) return;
+    const linhas = parseCSVText(csvText);
+    if(!linhas.length) return;
+    const temColunaId = Object.keys(linhas[0]).some(h=> normalizeHeaderKey(h)==='id');
+    if(!temColunaId){
+      if(!silent) console.warn('EPI_REGISTROS: cabeçalho inesperado na resposta — sincronização ignorada.');
+      return;
+    }
+    const novoState = {overrides:{}, excluidos:[]};
+    linhas.forEach(l=>{
+      const id = (l.Id||'').trim();
+      if(!id) return;
+      const excluido = String(l.Excluido||'').trim().toUpperCase()==='TRUE';
+      if(excluido){ novoState.excluidos.push(id); return; }
+      const ultimaEntrega = (l.UltimaEntrega||'').trim();
+      if(ultimaEntrega) novoState.overrides[id] = {ultimaEntrega};
+    });
+    epiState = novoState;
+    saveEpiState();
+    if(document.getElementById('epiTbody')) renderEpiManagement();
+  }catch(err){
+    if(!silent) console.warn('EPI_REGISTROS: sincronização automática não disponível agora.', err);
+  }
+}
+async function salvarRegistroEpiNaPlanilha(id){
+  try{
+    const partes = id.split('::');
+    const registro = {
+      id, matricula: partes[0]||'', campo: partes.slice(1).join('::')||'',
+      ultimaEntrega: (epiState.overrides[id]&&epiState.overrides[id].ultimaEntrega) || '',
+      excluido: epiState.excluidos.includes(id) ? 'TRUE' : 'FALSE'
+    };
+    const resp = await enviarRegistroGenericoViaJSONP('salvarEpi', registro);
+    if(resp && resp.error) throw new Error(resp.error);
+    return true;
+  }catch(err){
+    avisarFalhaSincronizacaoCompartilhada('EPI', err);
+    return false;
+  }
+}
 /* Monta uma linha por (colaborador ativo × tipo de EPI aplicável), a partir
    da MESMA base já filtrada por Loja/Unidade e Setor (aba) usada pela
    Conformidade Legal — ver calcularResumoVencimentos. Campo em branco na
@@ -8323,6 +8787,7 @@ function marcarEpiEntregue(id, checked){
   saveEpiState();
   renderEpiManagement();
   registrarLogAuditoria('Alteração de Controle de EPI: '+id+(checked?' — entrega registrada':' — entrega desmarcada'));
+  salvarRegistroEpiNaPlanilha(id);
 }
 function excluirEpi(id){
   if(!confirm('Confirma a exclusão deste registro de EPI? Esta ação remove o item do monitoramento.')) return;
@@ -8331,6 +8796,7 @@ function excluirEpi(id){
   saveEpiState();
   registrarLogAuditoria('Exclusão de registro de EPI: '+id);
   renderEpiManagement();
+  salvarRegistroEpiNaPlanilha(id);
 }
 function abrirEditarDataEpi(id){
   const resumo = calcularResumoEpis();
@@ -8349,6 +8815,7 @@ function salvarEdicaoDataEpi(){
   saveEpiState();
   fecharEditarDataEpi();
   renderEpiManagement();
+  salvarRegistroEpiNaPlanilha(id);
 }
 /* Impressão isolada do Mapa de Troca de EPIs — lista de colaboradores que
    precisam de novo equipamento neste mês (vencidos + janela de 31 dias),
@@ -9469,6 +9936,56 @@ function loadRsVagas(){
   try{ rsVagas = JSON.parse(localStorage.getItem(RS_STORAGE_KEY)) || []; }catch(e){ rsVagas = []; }
 }
 function saveRsVagas(){ try{ localStorage.setItem(RS_STORAGE_KEY, JSON.stringify(rsVagas)); }catch(e){} }
+/* ---------------------------------------------------------------------
+   PERSISTÊNCIA COMPARTILHADA (Google Sheets, aba RS_VAGAS) — mesmo
+   mecanismo JSONP genérico de Empréstimos/Férias/TD/AdmDesl. localStorage
+   continua como cache local; RS_VAGAS passa a ser a fonte de verdade
+   compartilhada entre todos que acessam o link do dashboard.
+   --------------------------------------------------------------------- */
+const RS_VAGAS_SHEET_ABA = 'RS_VAGAS';
+async function sincronizarRsVagasAutomatica(silent){
+  try{
+    const csvText = await buscarCSVGenericoViaJSONP(RS_VAGAS_SHEET_ABA);
+    if(!csvText || !csvText.trim()) return;
+    const linhas = parseCSVText(csvText);
+    if(!linhas.length) return;
+    const temColunaId = Object.keys(linhas[0]).some(h=> normalizeHeaderKey(h)==='id');
+    if(!temColunaId){
+      if(!silent) console.warn('RS_VAGAS: cabeçalho inesperado na resposta — sincronização ignorada.');
+      return;
+    }
+    const novasVagas = [];
+    linhas.forEach(l=>{
+      const id = (l.Id||'').trim();
+      if(!id) return;
+      const excluido = String(l.Excluido||'').trim().toUpperCase()==='TRUE';
+      if(excluido) return;
+      novasVagas.push({
+        id, titulo:(l.Titulo||'').trim(), unidade:(l.Unidade||'').trim(), setor:(l.Setor||'').trim(),
+        recrutador:(l.Recrutador||'').trim(), dataAbertura:(l.DataAbertura||'').trim(), prazoLimite:(l.PrazoLimite||'').trim(),
+        custoEstimado:Number(l.CustoEstimado)||0, etapa:(l.Etapa||'').trim(), dataContratacao:(l.DataContratacao||'').trim()||null
+      });
+    });
+    if(novasVagas.length){ rsVagas = novasVagas; saveRsVagas(); if(document.getElementById('rsKanban')||document.getElementById('tab-recrutamento')) renderRsPanel(); }
+  }catch(err){
+    if(!silent) console.warn('RS_VAGAS: sincronização automática não disponível agora.', err);
+  }
+}
+async function salvarVagaNaPlanilha(v, excluido){
+  try{
+    const registro = {
+      id:v.id, titulo:v.titulo||'', unidade:v.unidade||'', setor:v.setor||'', recrutador:v.recrutador||'',
+      dataAbertura:v.dataAbertura||'', prazoLimite:v.prazoLimite||'', custoEstimado:v.custoEstimado||0,
+      etapa:v.etapa||'', dataContratacao:v.dataContratacao||'', excluido: excluido ? 'TRUE':'FALSE'
+    };
+    const resp = await enviarRegistroGenericoViaJSONP('salvarRsVaga', registro);
+    if(resp && resp.error) throw new Error(resp.error);
+    return true;
+  }catch(err){
+    avisarFalhaSincronizacaoCompartilhada('Vaga R&S', err);
+    return false;
+  }
+}
 /* Aplica uma etapa a uma vaga, mantendo Data de Contratação coerente com o
    pipeline: marcada automaticamente ao entrar em "Contratados" (se ainda não
    houver uma) e limpa ao sair dessa etapa (evita "Data de Contratação"
@@ -9487,17 +10004,20 @@ function criarVaga(dados){
   aplicarEtapaVaga(v, dados.etapa);
   rsVagas.push(v);
   saveRsVagas(); renderRsPanel();
+  salvarVagaNaPlanilha(v, false);
 }
 function moverEtapaVaga(id, novaEtapa){
   const v = rsVagas.find(x=>x.id===id); if(!v) return;
   aplicarEtapaVaga(v, novaEtapa);
   saveRsVagas(); renderRsPanel();
+  salvarVagaNaPlanilha(v, false);
 }
 function excluirVaga(id){
   const v = rsVagas.find(x=>x.id===id); if(!v) return;
   if(!confirm(`Deseja realmente excluir a vaga "${v.titulo}"? Esta ação não pode ser desfeita.`)) return;
   rsVagas = rsVagas.filter(x=>x.id!==id);
   saveRsVagas(); renderRsPanel();
+  salvarVagaNaPlanilha(v, true);
 }
 function abrirEditarVaga(id){
   const v = rsVagas.find(x=>x.id===id); if(!v) return;
@@ -9525,6 +10045,7 @@ function salvarEdicaoVaga(){
   v.prazoLimite = $('rsEditPrazo').value;
   v.custoEstimado = Number($('rsEditCusto').value) || 0;
   saveRsVagas(); fecharEditarVaga(); renderRsPanel();
+  salvarVagaNaPlanilha(v, false);
 }
 function filtrarVagas(){
   let out = rsVagas;
@@ -10673,7 +11194,7 @@ function wireEvents(){
   $('btnToggleTheme').addEventListener('click', ()=> aplicarTema(currentTheme === 'dark' ? 'light' : 'dark', {persist:true, rerender:true}));
   $('btnPrint').addEventListener('click', ()=>{ registrarLogAuditoria('Exportação/Impressão: Imprimir/PDF (aba '+activeTab+')'); window.print(); });
   $('btnLoadMock').addEventListener('click', loadMockData);
-  $('btnLoadGsheet').addEventListener('click', ()=> { atualizarViaGoogleSheets(); sincronizarPesquisaInternaAutomatica(true); sincronizarFeriasAutomatica(true); sincronizarTDAutomatica(true); sincronizarAdmDeslAutomatica(true); });
+  $('btnLoadGsheet').addEventListener('click', ()=> { atualizarViaGoogleSheets(); sincronizarTodosModulosCompartilhados(true); });
   $('btnTestGsheetLink').addEventListener('click', ()=>{
     const url = $('gsheetUrl').value.trim();
     if(!url){ setDsMsg('Informe o link da planilha antes de testar.', true); return; }
@@ -10716,9 +11237,11 @@ function wireEvents(){
 
   $('btnAddTask').addEventListener('click', ()=>{
     const title = $('newTaskTitle').value.trim(); if(!title){ alert('Informe um título para a tarefa.'); return; }
-    tasks.push({id:cryptoId(), title, owner:$('newTaskOwner').value.trim(), prio:$('newTaskPrio').value, due:$('newTaskDue').value, status:$('newTaskStatus').value});
+    const novaTask = {id:cryptoId(), title, owner:$('newTaskOwner').value.trim(), prio:$('newTaskPrio').value, due:$('newTaskDue').value, status:$('newTaskStatus').value};
+    tasks.push(novaTask);
     saveTasks(); renderKanban();
     $('newTaskTitle').value=''; $('newTaskOwner').value=''; $('newTaskDue').value='';
+    salvarTarefaKanbanNaPlanilha(novaTask, false);
   });
   bindKanbanActionsOnce();
   $('tbl-tasks').addEventListener('click', e=>{
@@ -10740,6 +11263,7 @@ function wireEvents(){
     const emp = rawData.find(x=>x.Matricula===mat);
     delete nineboxAssignments[mat]; saveNinebox(); renderNineBox();
     registrarLogAuditoria('Remoção de posicionamento na Matriz 9Box: '+(emp?emp.Nome:mat));
+    salvarPosicaoNineboxNaPlanilha(mat, true);
   });
   $('nb9boxEvolModo').addEventListener('change', ()=>{
     const individual = $('nb9boxEvolModo').value === 'individual';
@@ -10994,7 +11518,472 @@ function wireEvents(){
   $('btnRsParecerLimpar').addEventListener('click', ()=>{
     if(confirm('Confirma limpar todos os campos e o parecer gerado?')) limparGeradorParecerRs();
   });
+
+  // --- Empréstimos (persistência compartilhada via Google Sheets) ---
+  wireEmprestimosEvents();
+  // Nota: EPI, Kanban, R&S/Vagas e 9Box não precisam de novos listeners —
+  // a sincronização compartilhada foi acoplada diretamente às funções
+  // saveEpiState/saveTasks/saveRsVagas/saveNinebox já existentes (ver cada
+  // seção), reaproveitando 100% os eventos/botões que já as chamavam.
 }
+
+/* =====================================================================
+   ABA 11 — EMPRÉSTIMOS (Gestão de Empréstimos Próprios e Consignados)
+   ---------------------------------------------------------------------
+   Sincronização compartilhada via Google Sheets (aba EMPRESTIMOS_
+   REGISTROS), usando o helper genérico de JSONP (buscarCSVGenericoViaJSONP
+   /enviarRegistroGenericoViaJSONP) — mesmo mecanismo imune a CORS já usado
+   em Férias/TD/AdmDesl, sem duplicar boilerplate. localStorage funciona
+   como cache local (instantâneo/offline); a aba EMPRESTIMOS_REGISTROS é a
+   fonte de verdade compartilhada entre todos que acessam o link.
+   ===================================================================== */
+const EMPRESTIMOS_STORAGE_KEY = 'hr_emprestimos_v1';
+const EMPRESTIMOS_SHEET_ABA = 'EMPRESTIMOS_REGISTROS';
+let emprestimosState = []; // array de empréstimos
+let empFiltros = {loja:'todas', colaborador:'', status:'todos'};
+
+function loadEmprestimosState(){
+  try{
+    const raw = localStorage.getItem(EMPRESTIMOS_STORAGE_KEY);
+    emprestimosState = raw ? JSON.parse(raw) : [];
+  }catch(err){ console.error('Falha ao carregar '+EMPRESTIMOS_STORAGE_KEY+':', err); emprestimosState = []; }
+}
+function saveEmprestimosStateLocal(){
+  try{ localStorage.setItem(EMPRESTIMOS_STORAGE_KEY, JSON.stringify(emprestimosState)); }
+  catch(err){ console.error('Falha ao salvar '+EMPRESTIMOS_STORAGE_KEY+':', err); }
+}
+
+/* Baixa EMPRESTIMOS_REGISTROS e RECONSTRÓI o emprestimosState inteiro a
+   partir da planilha (fonte de verdade compartilhada) — mesmo espírito de
+   sincronizarFeriasAutomatica: falha silenciosa, nunca trava a aba. */
+async function sincronizarEmprestimosAutomatica(silent){
+  try{
+    const csvText = await buscarCSVGenericoViaJSONP(EMPRESTIMOS_SHEET_ABA);
+    if(!csvText || !csvText.trim()) return; // aba ainda não existe (nenhum registro salvo ainda)
+    const linhas = parseCSVText(csvText);
+    if(!linhas.length) return;
+    const temColunaId = Object.keys(linhas[0]).some(h=> normalizeHeaderKey(h)==='id');
+    if(!temColunaId){
+      if(!silent) console.warn('EMPRESTIMOS_REGISTROS: cabeçalho inesperado na resposta — sincronização ignorada.');
+      return;
+    }
+    const novoState = [];
+    linhas.forEach(l=>{
+      const id = (l.Id||'').trim();
+      if(!id) return;
+      const excluido = String(l.Excluido||'').trim().toUpperCase()==='TRUE';
+      if(excluido) return; // soft-delete: some da lista visível
+      let parcelas = [];
+      try{ parcelas = JSON.parse(l.ParcelasJSON||'[]'); }catch(e){ parcelas = []; }
+      novoState.push({
+        id, matricula:(l.Matricula||'').trim(), colaborador:(l.Colaborador||'').trim(),
+        loja:(l.Loja||'').trim(), setor:(l.Setor||'').trim(), tipo:(l.Tipo||'').trim(),
+        valorTotal:Number(l.ValorTotal)||0, valorParcela:Number(l.ValorParcela)||0,
+        qtdParcelas:Number(l.QtdParcelas)||0, dataInicio:(l.DataInicio||'').trim(),
+        parcelas, contratoAssinado: String(l.ContratoAssinado||'').trim().toUpperCase()==='TRUE',
+        status:(l.Status||'').trim(), quitadoEm:(l.QuitadoEm||'').trim(), excluido:false,
+        criadoEm:(l.CriadoEm||'').trim(), atualizadoEm:(l.AtualizadoEm||'').trim()
+      });
+    });
+    emprestimosState = novoState;
+    saveEmprestimosStateLocal();
+    if(document.getElementById('empTbody')) renderEmprestimosTab();
+  }catch(err){
+    if(!silent) console.warn('EMPRESTIMOS_REGISTROS: sincronização automática não disponível agora.', err);
+  }
+}
+
+async function salvarEmprestimoNaPlanilha(emp){
+  try{
+    const registro = {
+      id: emp.id, matricula: emp.matricula, colaborador: emp.colaborador, loja: emp.loja, setor: emp.setor,
+      tipo: emp.tipo, valorTotal: emp.valorTotal, valorParcela: emp.valorParcela, qtdParcelas: emp.qtdParcelas,
+      dataInicio: emp.dataInicio, parcelas: emp.parcelas, contratoAssinado: emp.contratoAssinado ? 'TRUE':'FALSE',
+      status: emp.status, quitadoEm: emp.quitadoEm||'', excluido: emp.excluido ? 'TRUE':'FALSE', criadoEm: emp.criadoEm
+    };
+    const resp = await enviarRegistroGenericoViaJSONP('salvarEmprestimo', registro);
+    if(resp && resp.error) throw new Error(resp.error);
+    return true;
+  }catch(err){
+    avisarFalhaSincronizacaoCompartilhada('Empréstimo', err);
+    return false;
+  }
+}
+
+function gerarCronogramaParcelas(dataInicioStr, qtd, valorTotal){
+  const parcelas = [];
+  if(!dataInicioStr || !qtd || qtd<1) return parcelas;
+  const base = toDate(dataInicioStr);
+  if(!base) return parcelas;
+  const total = Number(valorTotal)||0;
+  const valorBase = Math.floor((total/qtd)*100)/100;
+  const somaBase = Math.round(valorBase*qtd*100)/100;
+  const ajusteUltima = Math.round((total - somaBase)*100)/100;
+  for(let i=0;i<qtd;i++){
+    const venc = new Date(base);
+    venc.setMonth(venc.getMonth()+i);
+    const valor = (i===qtd-1) ? Math.round((valorBase+ajusteUltima)*100)/100 : valorBase;
+    parcelas.push({numero:i+1, vencimento:fmtDateISO(venc), pago:false, pagoEm:'', valor});
+  }
+  return parcelas;
+}
+
+function atualizarPreviewValorParcela(){
+  const total = Number($('empValorTotal').value)||0;
+  const qtd = Number($('empQtdParcelas').value)||0;
+  $('empValorParcela').value = qtd>0 ? (Math.round((total/qtd)*100)/100) : '';
+}
+
+function renderResumoParcelas(){
+  const total = Number($('empValorTotal').value)||0;
+  const pago = empParcelasEdicao.filter(p=>p.pago).reduce((s,p)=> s+(Number(p.valor)||0), 0);
+  const saldo = Math.max(0, Math.round((total-pago)*100)/100);
+  $('empResumoTotal').textContent = fmtMoedaBR(total);
+  $('empResumoPago').textContent = fmtMoedaBR(pago);
+  $('empResumoSaldo').textContent = fmtMoedaBR(saldo);
+}
+
+function calcularStatusEmprestimo(emp){
+  if(!emp.parcelas || !emp.parcelas.length) return 'Ativo';
+  const todasPagas = emp.parcelas.every(p=>p.pago);
+  if(todasPagas || emp.quitadoEm) return 'Quitado';
+  const hoje = new Date();
+  const temVencidaNaoPaga = emp.parcelas.some(p=> !p.pago && toDate(p.vencimento) && toDate(p.vencimento)<hoje);
+  return temVencidaNaoPaga ? 'Inadimplente' : 'Ativo';
+}
+
+function saldoDevedorEmprestimo(emp){
+  if(!emp.parcelas || !emp.parcelas.length) return emp.valorTotal||0;
+  const restantes = emp.parcelas.filter(p=>!p.pago).length;
+  return restantes * (emp.valorParcela||0);
+}
+
+function fmtMoedaBR(v){ return (Number(v)||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+
+function populateEmpFiltroLoja(){
+  const sel = $('empFilterLoja'); if(!sel) return;
+  const cur = sel.value;
+  const lojas = Array.from(new Set(rawData.map(e=>e.Unidade_Alocacao).filter(Boolean)));
+  sel.innerHTML = '<option value="todas">Todas as Lojas</option>' + lojas.map(u=>`<option value="${escapeHtml(u)}">${escapeHtml(labelUnidadeAmigavel(u))}</option>`).join('');
+  if(cur) sel.value = cur;
+}
+
+function getEmprestimosFiltrados(){
+  let lista = emprestimosState.filter(e=> !e.excluido);
+  if(empFiltros.loja !== 'todas') lista = lista.filter(e=> e.loja === empFiltros.loja);
+  if(empFiltros.colaborador.trim()){
+    const termo = empFiltros.colaborador.trim().toLowerCase();
+    lista = lista.filter(e=> (e.colaborador||'').toLowerCase().includes(termo));
+  }
+  if(empFiltros.status !== 'todos') lista = lista.filter(e=> calcularStatusEmprestimo(e) === empFiltros.status);
+  return lista;
+}
+
+function renderEmprestimosKPIs(lista){
+  const ativos = lista.filter(e=> calcularStatusEmprestimo(e)!=='Quitado');
+  const quitados = lista.filter(e=> calcularStatusEmprestimo(e)==='Quitado');
+  const debitoHoje = ativos.reduce((s,e)=> s+saldoDevedorEmprestimo(e), 0);
+  $('emp-kpi-debito').textContent = fmtMoedaBR(debitoHoje);
+  $('emp-kpi-ativos').textContent = String(ativos.length);
+  $('emp-kpi-quitados').textContent = String(quitados.length);
+  const maior = ativos.slice().sort((a,b)=> (b.valorTotal||0)-(a.valorTotal||0))[0];
+  $('emp-kpi-maior').textContent = maior ? fmtMoedaBR(maior.valorTotal) : 'R$ 0,00';
+  $('emp-kpi-maior-nome').textContent = maior ? (maior.colaborador+' — '+labelUnidadeAmigavel(maior.loja)) : '—';
+}
+
+function renderEmprestimosRanking(lista){
+  const ativos = lista.filter(e=> calcularStatusEmprestimo(e)!=='Quitado').slice().sort((a,b)=> (b.valorTotal||0)-(a.valorTotal||0)).slice(0,10);
+  $('empRankingTbody').innerHTML = ativos.map((e,i)=> `<tr>
+    <td>${i+1}</td><td>${escapeHtml(e.colaborador)}</td><td>${escapeHtml(labelUnidadeAmigavel(e.loja))}</td>
+    <td>${fmtMoedaBR(e.valorTotal)}</td><td>${fmtMoedaBR(saldoDevedorEmprestimo(e))}</td>
+  </tr>`).join('') || '<tr><td colspan="5" class="hint">Nenhum empréstimo ativo no filtro atual.</td></tr>';
+}
+
+function statusBadgeEmprestimo(status){
+  if(status==='Quitado') return '<span class="badge good">🟢 Quitado</span>';
+  if(status==='Inadimplente') return '<span class="badge critical">🔴 Inadimplente</span>';
+  return '<span class="badge warning">🔵 Ativo</span>';
+}
+
+function renderEmprestimosTabela(lista){
+  $('empCountInfo').textContent = lista.length + ' empréstimo(s) no filtro atual';
+  $('empTbody').innerHTML = lista.map(e=>{
+    const status = calcularStatusEmprestimo(e);
+    const pagas = (e.parcelas||[]).filter(p=>p.pago).length;
+    const total = (e.parcelas||[]).length;
+    return `<tr>
+      <td>${escapeHtml(e.colaborador)}</td>
+      <td>${escapeHtml(labelUnidadeAmigavel(e.loja))}</td>
+      <td>${escapeHtml(e.setor||'—')}</td>
+      <td>${e.tipo==='Consignado'?'Consignado':'Próprio'}</td>
+      <td>${fmtMoedaBR(e.valorTotal)}</td>
+      <td>${fmtMoedaBR(e.valorParcela)}</td>
+      <td>${pagas} / ${total}</td>
+      <td>${statusBadgeEmprestimo(status)}</td>
+      <td>${e.contratoAssinado? '<span class="badge good">✅ Assinado</span>' : '<span class="badge warning">⏳ Pendente</span>'}</td>
+      <td>
+        <div class="no-print" style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-sm btn-ghost" data-empact="editar" data-empid="${escapeHtml(e.id)}" type="button">✏️ Gerenciar</button>
+          <button class="btn btn-sm btn-danger" data-empact="excluir" data-empid="${escapeHtml(e.id)}" type="button">🗑️</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="10" class="hint">Nenhum empréstimo cadastrado para os filtros selecionados.</td></tr>';
+}
+
+/* Gráfico 1 — Distribuição por Loja e Setor (barras empilhadas por Loja,
+   uma série por Setor presente na lista filtrada). */
+function renderGraficoEmpDistribuicao(lista){
+  const lojas = Array.from(new Set(lista.map(e=>e.loja).filter(Boolean)));
+  const setores = Array.from(new Set(lista.map(e=>e.setor).filter(Boolean)));
+  const paleta = ['#3B82F6','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#EC4899','#84CC16'];
+  const datasets = setores.map((s,i)=> ({
+    label: s, backgroundColor: paleta[i % paleta.length], borderRadius:4, maxBarThickness:44,
+    data: lojas.map(loja=> lista.filter(e=> e.loja===loja && e.setor===s).length)
+  }));
+  upsertChart('chartEmpDistribuicao', {
+    type:'bar',
+    data:{labels: lojas.map(labelUnidadeAmigavel), datasets},
+    options:{responsive:true,maintainAspectRatio:false, scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,ticks:{precision:0}}}, plugins:{legend:{position:'bottom'}}}
+  });
+}
+
+/* Gráfico 2 — Quantidade de empréstimos por colaborador (top 12). */
+function renderGraficoEmpPorColaborador(lista){
+  const porColab = {};
+  lista.forEach(e=>{ porColab[e.colaborador] = (porColab[e.colaborador]||0)+1; });
+  const entradas = Object.entries(porColab).sort((a,b)=> b[1]-a[1]).slice(0,12);
+  upsertChart('chartEmpPorColaborador', {
+    type:'bar',
+    data:{labels: entradas.map(e=>e[0]), datasets:[{label:'Empréstimos', data:entradas.map(e=>e[1]), backgroundColor:'#3B82F6', borderRadius:4, maxBarThickness:28}]},
+    options:{indexAxis:'y', responsive:true, maintainAspectRatio:false, scales:{x:{beginAtZero:true,ticks:{precision:0}}}, plugins:{legend:{display:false}}}
+  });
+}
+
+/* Gráfico 3 — Comparativo Valor Total Pego vs. Valor Já Quitado. */
+function renderGraficoEmpPegoQuitado(lista){
+  const totalPego = lista.reduce((s,e)=> s+(e.valorTotal||0), 0);
+  const totalQuitado = lista.reduce((s,e)=> s + ((e.parcelas||[]).filter(p=>p.pago).length * (e.valorParcela||0)), 0);
+  upsertChart('chartEmpPegoQuitado', {
+    type:'bar',
+    data:{labels:['Grupo Brasmetal'], datasets:[
+      {label:'Valor Total Pego', data:[totalPego], backgroundColor:'#3B82F6', borderRadius:4, maxBarThickness:70},
+      {label:'Valor Já Quitado', data:[totalQuitado], backgroundColor:'#10B981', borderRadius:4, maxBarThickness:70}
+    ]},
+    options:{responsive:true, maintainAspectRatio:false, scales:{y:{beginAtZero:true, ticks:{callback:v=>fmtMoedaBR(v)}}}, plugins:{legend:{position:'bottom'}, tooltip:{callbacks:{label:ctx=> ctx.dataset.label+': '+fmtMoedaBR(ctx.parsed.y)}}}}
+  });
+}
+
+function renderEmprestimosTab(){
+  populateEmpFiltroLoja();
+  const lista = getEmprestimosFiltrados();
+  renderEmprestimosKPIs(lista);
+  renderEmprestimosRanking(lista);
+  renderEmprestimosTabela(lista);
+  renderGraficoEmpDistribuicao(lista);
+  renderGraficoEmpPorColaborador(lista);
+  renderGraficoEmpPegoQuitado(lista);
+}
+
+/* ---------------------------------------------------------------------
+   MODAL DE CADASTRO/GESTÃO (formulário + cronograma dinâmico de parcelas)
+   --------------------------------------------------------------------- */
+let empParcelasEdicao = [];
+function abrirModalNovoEmprestimo(){
+  $('empModalTitulo').textContent = '➕ Novo Empréstimo';
+  $('empId').value = '';
+  $('empColaboradorSelect').value = '';
+  $('empLoja').value = '';
+  $('empSetor').value = '';
+  $('empTipo').value = 'Proprio';
+  $('empValorTotal').value = '';
+  $('empQtdParcelas').value = '';
+  $('empValorParcela').value = '';
+  $('empDataInicio').value = '';
+  $('empContratoAssinado').checked = false;
+  empParcelasEdicao = [];
+  $('empCronogramaWrap').classList.add('hidden');
+  $('empModalOverlay').classList.remove('hidden');
+}
+function abrirModalEditarEmprestimo(id){
+  const emp = emprestimosState.find(e=>e.id===id); if(!emp) return;
+  $('empModalTitulo').textContent = '✏️ Gerenciar Empréstimo';
+  $('empId').value = emp.id;
+  $('empColaboradorSelect').value = emp.matricula || '';
+  $('empLoja').value = labelUnidadeAmigavel(emp.loja||'');
+  $('empSetor').value = emp.setor||'';
+  $('empTipo').value = emp.tipo || 'Proprio';
+  $('empValorTotal').value = emp.valorTotal || '';
+  $('empQtdParcelas').value = emp.qtdParcelas || '';
+  $('empValorParcela').value = emp.valorParcela || '';
+  $('empDataInicio').value = emp.dataInicio || '';
+  $('empContratoAssinado').checked = !!emp.contratoAssinado;
+  // Backfill de "valor" para empréstimos salvos antes da coluna existir.
+  empParcelasEdicao = JSON.parse(JSON.stringify(emp.parcelas||[])).map(p=> ({...p, valor:(p.valor!=null? p.valor : emp.valorParcela)}));
+  if(empParcelasEdicao.length){ renderParcelasEdicao(); $('empCronogramaWrap').classList.remove('hidden'); }
+  else { $('empCronogramaWrap').classList.add('hidden'); }
+  $('empModalOverlay').classList.remove('hidden');
+}
+function fecharModalEmprestimo(){ $('empModalOverlay').classList.add('hidden'); }
+
+function onSelecionarColaboradorEmprestimo(){
+  const mat = $('empColaboradorSelect').value;
+  const emp = rawData.find(e=>e.Matricula===mat);
+  $('empLoja').value = emp ? labelUnidadeAmigavel(emp.Unidade_Alocacao) : '';
+  $('empSetor').value = emp ? (emp.Setor||'') : '';
+}
+
+function renderParcelasEdicao(){
+  $('empParcelasTbody').innerHTML = empParcelasEdicao.map((p,idx)=> `<tr>
+    <td>${p.numero}</td>
+    <td><input type="date" class="emp-parcela-venc" data-idx="${idx}" value="${escapeHtml(p.vencimento||'')}" style="min-width:150px;"></td>
+    <td>${fmtMoedaBR(p.valor)}</td>
+    <td style="text-align:center;"><input type="checkbox" class="emp-parcela-pago" data-idx="${idx}" ${p.pago?'checked':''}></td>
+    <td>${p.pago
+      ? `<input type="date" class="emp-parcela-pagoem" data-idx="${idx}" value="${escapeHtml(p.pagoEm||fmtDateISO(new Date()))}" style="min-width:150px;">`
+      : '<span class="hint">—</span>'}</td>
+  </tr>`).join('');
+  renderResumoParcelas();
+}
+
+function gerarOuAtualizarCronograma(){
+  const dataInicio = $('empDataInicio').value;
+  const qtd = Number($('empQtdParcelas').value)||0;
+  const valorTotal = Number($('empValorTotal').value)||0;
+  if(!dataInicio || qtd<1){ alert('Informe a Data de Início e a Quantidade de Parcelas para gerar o cronograma.'); return; }
+  if(valorTotal<=0){ alert('Informe o Valor Total do Empréstimo para gerar o cronograma.'); return; }
+  // Preserva parcelas já quitadas ao regenerar (ex.: usuário reabriu para
+  // ajustar quantidade) — nunca desfaz uma quitação já registrada.
+  const jaQuitadas = {};
+  empParcelasEdicao.forEach(p=>{ if(p.pago) jaQuitadas[p.numero] = p; });
+  const novas = gerarCronogramaParcelas(dataInicio, qtd, valorTotal);
+  empParcelasEdicao = novas.map(p=> jaQuitadas[p.numero] ? jaQuitadas[p.numero] : p);
+  atualizarPreviewValorParcela();
+  renderParcelasEdicao();
+  $('empCronogramaWrap').classList.remove('hidden');
+}
+
+function onCronogramaTbodyChange(ev){
+  const t = ev.target;
+  const idx = Number(t.dataset.idx);
+  if(Number.isNaN(idx) || !empParcelasEdicao[idx]) return;
+  if(t.classList.contains('emp-parcela-venc')) empParcelasEdicao[idx].vencimento = t.value;
+  if(t.classList.contains('emp-parcela-pagoem')){ empParcelasEdicao[idx].pagoEm = t.value; }
+  if(t.classList.contains('emp-parcela-pago')){
+    empParcelasEdicao[idx].pago = t.checked;
+    // Preenche "Pago Em" com a data de hoje por padrão ao marcar — o campo
+    // fica editável logo em seguida (input type=date), permitindo ajustar
+    // para a data exata do pagamento quando diferente de hoje.
+    empParcelasEdicao[idx].pagoEm = t.checked ? (empParcelasEdicao[idx].pagoEm || fmtDateISO(new Date())) : '';
+    renderParcelasEdicao();
+  }
+  if(t.classList.contains('emp-parcela-pagoem')) renderResumoParcelas();
+}
+
+async function salvarEmprestimoDoModal(){
+  const mat = $('empColaboradorSelect').value;
+  const empDados = rawData.find(e=>e.Matricula===mat);
+  if(!mat || !empDados){ alert('Selecione um colaborador válido.'); return; }
+  const valorTotal = Number($('empValorTotal').value)||0;
+  const qtdParcelas = Number($('empQtdParcelas').value)||0;
+  if(valorTotal<=0 || qtdParcelas<1){ alert('Informe Valor Total e Quantidade de Parcelas válidos.'); return; }
+  const valorParcela = qtdParcelas>0 ? Math.round((valorTotal/qtdParcelas)*100)/100 : 0;
+  $('empValorParcela').value = valorParcela;
+
+  let id = $('empId').value;
+  const novo = !id;
+  if(novo) id = 'emp_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
+
+  if(!empParcelasEdicao.length || empParcelasEdicao.length !== qtdParcelas){
+    empParcelasEdicao = gerarCronogramaParcelas($('empDataInicio').value, qtdParcelas, valorTotal);
+  }
+
+  const existente = emprestimosState.find(e=>e.id===id);
+  const emp = {
+    id, matricula: mat, colaborador: empDados.Nome, loja: empDados.Unidade_Alocacao||'', setor: empDados.Setor||'',
+    tipo: $('empTipo').value, valorTotal, valorParcela, qtdParcelas, dataInicio: $('empDataInicio').value,
+    parcelas: empParcelasEdicao, contratoAssinado: $('empContratoAssinado').checked,
+    status:'', quitadoEm: existente ? existente.quitadoEm : '', excluido:false,
+    criadoEm: existente ? existente.criadoEm : new Date().toISOString(),
+    atualizadoEm: new Date().toISOString()
+  };
+  emp.status = calcularStatusEmprestimo(emp);
+
+  if(existente) Object.assign(existente, emp);
+  else emprestimosState.push(emp);
+  saveEmprestimosStateLocal();
+  fecharModalEmprestimo();
+  renderEmprestimosTab();
+  registrarLogAuditoria((novo?'Novo empréstimo cadastrado: ':'Empréstimo atualizado: ')+emp.colaborador+' ('+fmtMoedaBR(emp.valorTotal)+')');
+  await salvarEmprestimoNaPlanilha(emp);
+}
+
+async function quitarEmprestimoDoModal(){
+  const id = $('empId').value;
+  if(!id){ alert('Salve o empréstimo antes de quitá-lo.'); return; }
+  const emp = emprestimosState.find(e=>e.id===id); if(!emp) return;
+  if(!confirm('Confirma a quitação total deste empréstimo? Todas as parcelas serão marcadas como pagas.')) return;
+  const hoje = fmtDateISO(new Date());
+  (emp.parcelas||[]).forEach(p=>{ p.pago = true; if(!p.pagoEm) p.pagoEm = hoje; });
+  emp.quitadoEm = hoje;
+  emp.status = 'Quitado';
+  saveEmprestimosStateLocal();
+  empParcelasEdicao = emp.parcelas;
+  renderParcelasEdicao();
+  renderEmprestimosTab();
+  registrarLogAuditoria('Empréstimo quitado: '+emp.colaborador+' ('+fmtMoedaBR(emp.valorTotal)+')');
+  await salvarEmprestimoNaPlanilha(emp);
+}
+
+async function excluirEmprestimoDoModal(){
+  const id = $('empId').value;
+  if(!id) return;
+  const emp = emprestimosState.find(e=>e.id===id); if(!emp) return;
+  if(!confirm('Deseja realmente excluir este empréstimo? Esta ação não pode ser desfeita.')) return;
+  emp.excluido = true;
+  saveEmprestimosStateLocal();
+  fecharModalEmprestimo();
+  renderEmprestimosTab();
+  registrarLogAuditoria('Empréstimo excluído: '+emp.colaborador);
+  await salvarEmprestimoNaPlanilha(emp);
+}
+
+async function excluirEmprestimoDireto(id){
+  const emp = emprestimosState.find(e=>e.id===id); if(!emp) return;
+  if(!confirm('Deseja realmente excluir o empréstimo de "'+emp.colaborador+'"? Esta ação não pode ser desfeita.')) return;
+  emp.excluido = true;
+  saveEmprestimosStateLocal();
+  renderEmprestimosTab();
+  registrarLogAuditoria('Empréstimo excluído: '+emp.colaborador);
+  await salvarEmprestimoNaPlanilha(emp);
+}
+
+function wireEmprestimosEvents(){
+  $('btnNovoEmprestimo').addEventListener('click', abrirModalNovoEmprestimo);
+  $('btnFecharEmpModal').addEventListener('click', fecharModalEmprestimo);
+  $('empModalOverlay').addEventListener('click', e=>{ if(e.target === $('empModalOverlay')) fecharModalEmprestimo(); });
+  $('empColaboradorSelect').addEventListener('change', onSelecionarColaboradorEmprestimo);
+  $('btnGerarCronograma').addEventListener('click', gerarOuAtualizarCronograma);
+  // Cálculo automático em tempo real do valor de cada parcela, antes de salvar.
+  $('empValorTotal').addEventListener('input', atualizarPreviewValorParcela);
+  $('empValorTotal').addEventListener('change', atualizarPreviewValorParcela);
+  $('empQtdParcelas').addEventListener('input', atualizarPreviewValorParcela);
+  $('empQtdParcelas').addEventListener('change', atualizarPreviewValorParcela);
+  $('empParcelasTbody').addEventListener('change', onCronogramaTbodyChange);
+  $('btnSalvarEmprestimo').addEventListener('click', salvarEmprestimoDoModal);
+  $('btnQuitarEmprestimoModal').addEventListener('click', quitarEmprestimoDoModal);
+  $('btnExcluirEmprestimoModal').addEventListener('click', excluirEmprestimoDoModal);
+  $('empFilterLoja').addEventListener('change', ()=>{ empFiltros.loja = $('empFilterLoja').value; renderEmprestimosTab(); });
+  $('empFilterColaborador').addEventListener('input', ()=>{ empFiltros.colaborador = $('empFilterColaborador').value; renderEmprestimosTab(); });
+  $('empFilterStatus').addEventListener('change', ()=>{ empFiltros.status = $('empFilterStatus').value; renderEmprestimosTab(); });
+  $('empTbody').addEventListener('click', (ev)=>{
+    const btn = ev.target.closest('[data-empact]'); if(!btn) return;
+    const id = btn.dataset.empid;
+    if(btn.dataset.empact==='editar') abrirModalEditarEmprestimo(id);
+    if(btn.dataset.empact==='excluir') excluirEmprestimoDireto(id);
+  });
+}
+
 
 /* =====================================================================
    PERSONA — assistente virtual de IA (RH/DP/CLT/eSocial/NRs + uso do
@@ -11235,6 +12224,7 @@ function init(){
   if($('admdeslData')) $('admdeslData').value = fmtDateISO(new Date());
   loadEpiState();
   loadVacationState();
+  loadEmprestimosState();
   carregarDadosIniciais();
   renderKanban();
   if(!chartJsAvailable){
