@@ -2689,8 +2689,15 @@ tbody tr:hover{background:var(--surface-2);}
                 </label>
               </div>
             </div>
-            <div style="display:flex;gap:10px;margin:6px 0 14px;">
+            <div class="form-row">
+              <div class="form-field" style="flex:1 1 100%;">
+                <label>Observação (opcional)</label>
+                <textarea id="empObservacao" rows="2" maxlength="500" placeholder="Anotações internas sobre este empréstimo (opcional)..." style="width:100%;resize:vertical;font-family:inherit;font-size:12.5px;padding:9px 10px;border:1px solid var(--border-strong);border-radius:var(--radius-sm);"></textarea>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin:6px 0 14px;flex-wrap:wrap;">
               <button class="btn btn-outline btn-sm" id="btnGerarCronograma" type="button">📅 Gerar / Atualizar Cronograma de Parcelas</button>
+              <button class="btn btn-ghost btn-sm" id="btnLimparParcelas" type="button">🧹 Limpar Parcelas</button>
             </div>
 
             <div id="empCronogramaWrap" class="hidden">
@@ -11581,6 +11588,7 @@ async function sincronizarEmprestimosAutomatica(silent){
         valorTotal:Number(l.ValorTotal)||0, valorParcela:Number(l.ValorParcela)||0,
         qtdParcelas:Number(l.QtdParcelas)||0, dataInicio:(l.DataInicio||'').trim(),
         parcelas, contratoAssinado: String(l.ContratoAssinado||'').trim().toUpperCase()==='TRUE',
+        observacao:(l.Observacao||'').trim(),
         status:(l.Status||'').trim(), quitadoEm:(l.QuitadoEm||'').trim(), excluido:false,
         criadoEm:(l.CriadoEm||'').trim(), atualizadoEm:(l.AtualizadoEm||'').trim()
       });
@@ -11599,6 +11607,7 @@ async function salvarEmprestimoNaPlanilha(emp){
       id: emp.id, matricula: emp.matricula, colaborador: emp.colaborador, loja: emp.loja, setor: emp.setor,
       tipo: emp.tipo, valorTotal: emp.valorTotal, valorParcela: emp.valorParcela, qtdParcelas: emp.qtdParcelas,
       dataInicio: emp.dataInicio, parcelas: emp.parcelas, contratoAssinado: emp.contratoAssinado ? 'TRUE':'FALSE',
+      observacao: emp.observacao || '',
       status: emp.status, quitadoEm: emp.quitadoEm||'', excluido: emp.excluido ? 'TRUE':'FALSE', criadoEm: emp.criadoEm
     };
     const resp = await enviarRegistroGenericoViaJSONP('salvarEmprestimo', registro);
@@ -11711,8 +11720,10 @@ function renderEmprestimosTabela(lista){
     const status = calcularStatusEmprestimo(e);
     const pagas = (e.parcelas||[]).filter(p=>p.pago).length;
     const total = (e.parcelas||[]).length;
+    const notaTitulo = e.observacao ? ' title="Observação: '+escapeHtml(e.observacao).replace(/"/g,'&quot;')+'"' : '';
+    const notaIcone = e.observacao ? ' <span'+notaTitulo+' style="cursor:help;">📝</span>' : '';
     return `<tr>
-      <td>${escapeHtml(e.colaborador)}</td>
+      <td>${escapeHtml(e.colaborador)}${notaIcone}</td>
       <td>${escapeHtml(labelUnidadeAmigavel(e.loja))}</td>
       <td>${escapeHtml(e.setor||'—')}</td>
       <td>${e.tipo==='Consignado'?'Consignado':'Próprio'}</td>
@@ -11801,6 +11812,7 @@ function abrirModalNovoEmprestimo(){
   $('empValorParcela').value = '';
   $('empDataInicio').value = '';
   $('empContratoAssinado').checked = false;
+  $('empObservacao').value = '';
   empParcelasEdicao = [];
   $('empCronogramaWrap').classList.add('hidden');
   $('empModalOverlay').classList.remove('hidden');
@@ -11818,6 +11830,7 @@ function abrirModalEditarEmprestimo(id){
   $('empValorParcela').value = emp.valorParcela || '';
   $('empDataInicio').value = emp.dataInicio || '';
   $('empContratoAssinado').checked = !!emp.contratoAssinado;
+  $('empObservacao').value = emp.observacao || '';
   // Backfill de "valor" para empréstimos salvos antes da coluna existir.
   empParcelasEdicao = JSON.parse(JSON.stringify(emp.parcelas||[])).map(p=> ({...p, valor:(p.valor!=null? p.valor : emp.valorParcela)}));
   if(empParcelasEdicao.length){ renderParcelasEdicao(); $('empCronogramaWrap').classList.remove('hidden'); }
@@ -11863,6 +11876,25 @@ function gerarOuAtualizarCronograma(){
   $('empCronogramaWrap').classList.remove('hidden');
 }
 
+/* Limpa por completo o cronograma de parcelas em edição (inclusive as já
+   marcadas como pagas) para permitir recomeçar do zero — ex.: valores
+   lançados errados no início. Pede confirmação explícita quando há
+   parcelas pagas envolvidas, já que a quitação registrada seria perdida. */
+function limparParcelasEmprestimo(){
+  if(!empParcelasEdicao.length){
+    $('empCronogramaWrap').classList.add('hidden');
+    return;
+  }
+  const temPagas = empParcelasEdicao.some(p=>p.pago);
+  const aviso = temPagas
+    ? 'Tem certeza que deseja limpar TODAS as parcelas deste cronograma? Isso inclui parcelas já marcadas como pagas — a quitação registrada será perdida e você poderá gerar um novo cronograma do zero.'
+    : 'Limpar todas as parcelas deste cronograma? Você poderá gerar um novo cronograma em seguida.';
+  if(!confirm(aviso)) return;
+  empParcelasEdicao = [];
+  renderParcelasEdicao();
+  $('empCronogramaWrap').classList.add('hidden');
+}
+
 function onCronogramaTbodyChange(ev){
   const t = ev.target;
   const idx = Number(t.dataset.idx);
@@ -11903,6 +11935,7 @@ async function salvarEmprestimoDoModal(){
     id, matricula: mat, colaborador: empDados.Nome, loja: empDados.Unidade_Alocacao||'', setor: empDados.Setor||'',
     tipo: $('empTipo').value, valorTotal, valorParcela, qtdParcelas, dataInicio: $('empDataInicio').value,
     parcelas: empParcelasEdicao, contratoAssinado: $('empContratoAssinado').checked,
+    observacao: $('empObservacao').value.trim(),
     status:'', quitadoEm: existente ? existente.quitadoEm : '', excluido:false,
     criadoEm: existente ? existente.criadoEm : new Date().toISOString(),
     atualizadoEm: new Date().toISOString()
@@ -11964,6 +11997,7 @@ function wireEmprestimosEvents(){
   $('empModalOverlay').addEventListener('click', e=>{ if(e.target === $('empModalOverlay')) fecharModalEmprestimo(); });
   $('empColaboradorSelect').addEventListener('change', onSelecionarColaboradorEmprestimo);
   $('btnGerarCronograma').addEventListener('click', gerarOuAtualizarCronograma);
+  $('btnLimparParcelas').addEventListener('click', limparParcelasEmprestimo);
   // Cálculo automático em tempo real do valor de cada parcela, antes de salvar.
   $('empValorTotal').addEventListener('input', atualizarPreviewValorParcela);
   $('empValorTotal').addEventListener('change', atualizarPreviewValorParcela);
