@@ -11560,6 +11560,27 @@ function saveEmprestimosStateLocal(){
   catch(err){ console.error('Falha ao salvar '+EMPRESTIMOS_STORAGE_KEY+':', err); }
 }
 
+/* Converte um valor vindo da planilha (via getDisplayValues) para número,
+   de forma tolerante a formatação de moeda/milhar que pode ter sido
+   aplicada à célula manualmente no Google Sheets (ex.: "R$ 2.250,00" em vez
+   de "2250"). Sem isso, Number("R$ 2.250,00") vira NaN e o valor "zera"
+   silenciosamente no dashboard mesmo com o dado correto na planilha. */
+function parseNumeroPlanilha(v){
+  if(v == null) return 0;
+  if(typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  let s = String(v).trim();
+  if(!s) return 0;
+  s = s.replace(/[^\d,.\-]/g, ''); // remove "R$", espaços, NBSP etc.
+  if(!s) return 0;
+  if(s.indexOf(',') !== -1 && s.indexOf('.') !== -1){
+    s = s.replace(/\./g, '').replace(',', '.'); // "2.250,00" (BR) -> "2250.00"
+  } else if(s.indexOf(',') !== -1){
+    s = s.replace(',', '.'); // "2250,00" -> "2250.00"
+  }
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
 /* Baixa EMPRESTIMOS_REGISTROS e RECONSTRÓI o emprestimosState inteiro a
    partir da planilha (fonte de verdade compartilhada) — mesmo espírito de
    sincronizarFeriasAutomatica: falha silenciosa, nunca trava a aba. */
@@ -11582,11 +11603,14 @@ async function sincronizarEmprestimosAutomatica(silent){
       if(excluido) return; // soft-delete: some da lista visível
       let parcelas = [];
       try{ parcelas = JSON.parse(l.ParcelasJSON||'[]'); }catch(e){ parcelas = []; }
+      // Mesma tolerância de formatação aplicada ao valor de cada parcela,
+      // caso algum registro antigo tenha guardado o valor como texto.
+      parcelas = (parcelas||[]).map(p=> ({...p, valor: parseNumeroPlanilha(p.valor)}));
       novoState.push({
         id, matricula:(l.Matricula||'').trim(), colaborador:(l.Colaborador||'').trim(),
         loja:(l.Loja||'').trim(), setor:(l.Setor||'').trim(), tipo:(l.Tipo||'').trim(),
-        valorTotal:Number(l.ValorTotal)||0, valorParcela:Number(l.ValorParcela)||0,
-        qtdParcelas:Number(l.QtdParcelas)||0, dataInicio:(l.DataInicio||'').trim(),
+        valorTotal:parseNumeroPlanilha(l.ValorTotal), valorParcela:parseNumeroPlanilha(l.ValorParcela),
+        qtdParcelas:parseNumeroPlanilha(l.QtdParcelas), dataInicio:(l.DataInicio||'').trim(),
         parcelas, contratoAssinado: String(l.ContratoAssinado||'').trim().toUpperCase()==='TRUE',
         observacao:(l.Observacao||'').trim(),
         status:(l.Status||'').trim(), quitadoEm:(l.QuitadoEm||'').trim(), excluido:false,
@@ -11927,7 +11951,12 @@ async function salvarEmprestimoDoModal(){
   if(novo) id = 'emp_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);
 
   if(!empParcelasEdicao.length || empParcelasEdicao.length !== qtdParcelas){
-    empParcelasEdicao = gerarCronogramaParcelas($('empDataInicio').value, qtdParcelas, valorTotal);
+    // Mesma proteção de gerarOuAtualizarCronograma(): nunca perder parcelas
+    // já quitadas ao regenerar o cronograma nesta regravação automática.
+    const jaQuitadas = {};
+    empParcelasEdicao.forEach(p=>{ if(p.pago) jaQuitadas[p.numero] = p; });
+    const novas = gerarCronogramaParcelas($('empDataInicio').value, qtdParcelas, valorTotal);
+    empParcelasEdicao = novas.map(p=> jaQuitadas[p.numero] ? jaQuitadas[p.numero] : p);
   }
 
   const existente = emprestimosState.find(e=>e.id===id);
