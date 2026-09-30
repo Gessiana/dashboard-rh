@@ -3635,6 +3635,23 @@ const GSHEET_URL_PADRAO = 'https://script.google.com/macros/s/AKfycbwwGAVqwFpFGj
    específico já existente de Férias/TD/AdmDesl/Parecer RS, que continua
    funcionando exatamente como estava.
    ===================================================================== */
+/* Mescla (nunca substitui) uma lista local de registros com id contra o que
+   acabou de ser lido da planilha. Um item confirmado ativo na planilha é
+   atualizado/adicionado; um id confirmado excluído (Excluido=TRUE) é
+   removido; um item que só existe localmente e não aparece em nenhuma das
+   duas listas desta leitura (ex.: gravação ainda em andamento, ou uma
+   leitura pontual que ainda não alcançou aquele registro) é PRESERVADO —
+   nunca some da tela só porque esta sincronização específica não o viu.
+   Sem isso, qualquer atraso ou falha temporária de gravação (rede, cota do
+   Apps Script) faz a próxima leitura "zerar" registros que na verdade
+   ainda estão corretos, só não confirmados na planilha ainda. */
+function mesclarListaPorId(listaLocal, ativosNovos, idsExcluidos){
+  const porId = {};
+  (listaLocal||[]).forEach(item=>{ if(item && item.id) porId[item.id] = item; });
+  (idsExcluidos||[]).forEach(id=>{ delete porId[id]; });
+  (ativosNovos||[]).forEach(item=>{ if(item && item.id) porId[item.id] = item; });
+  return Object.values(porId);
+}
 let __jsonpGenericoContador = 0;
 function buscarCSVGenericoViaJSONP(abaNome){
   return new Promise((resolve, reject)=>{
@@ -4683,14 +4700,18 @@ async function sincronizarKanbanAutomatica(silent){
       return;
     }
     const novasTasks = [];
+    const idsExcluidos = [];
     linhas.forEach(l=>{
       const id = (l.Id||'').trim();
       if(!id) return;
       const excluido = String(l.Excluido||'').trim().toUpperCase()==='TRUE';
-      if(excluido) return;
+      if(excluido){ idsExcluidos.push(id); return; }
       novasTasks.push({id, title:(l.Title||'').trim(), owner:(l.Owner||'').trim(), prio:(l.Prio||'').trim(), due:(l.Due||'').trim(), status:(l.Status||'').trim()});
     });
-    if(novasTasks.length){ tasks = novasTasks; saveTasks(); if(document.getElementById('kanbanBoard')) renderKanban(); }
+    // Mescla em vez de substituir — ver mesclarListaPorId.
+    tasks = mesclarListaPorId(tasks, novasTasks, idsExcluidos);
+    saveTasks();
+    if(document.getElementById('kanbanBoard')) renderKanban();
   }catch(err){
     if(!silent) console.warn('KANBAN_TASKS: sincronização automática não disponível agora.', err);
   }
@@ -4883,17 +4904,20 @@ async function sincronizarNineboxAutomatica(silent){
       if(!silent) console.warn('NINEBOX_POSICOES: cabeçalho inesperado na resposta — sincronização ignorada.');
       return;
     }
-    const novoState = {};
+    // Mescla em vez de substituir (ver mesclarListaPorId acima): um
+    // posicionamento feito agora mesmo mas ainda não gravado na planilha
+    // nunca é apagado só porque esta leitura pontual não o viu.
     linhas.forEach(l=>{
       const mat = (l.Matricula||'').trim();
       if(!mat) return;
       const excluido = String(l.Excluido||'').trim().toUpperCase()==='TRUE';
-      if(excluido) return;
+      if(excluido){ delete nineboxAssignments[mat]; return; }
       const perf = (l.Perf||'').trim(), pot = (l.Pot||'').trim();
       if(!perf || !pot) return;
-      novoState[mat] = {perf, pot, prontidao:(l.Prontidao||'').trim()};
+      nineboxAssignments[mat] = {perf, pot, prontidao:(l.Prontidao||'').trim()};
     });
-    if(Object.keys(novoState).length){ nineboxAssignments = novoState; saveNinebox(); if(document.getElementById('nineboxGrid')) renderNineBox(); }
+    saveNinebox();
+    if(document.getElementById('nineboxGrid')) renderNineBox();
   }catch(err){
     if(!silent) console.warn('NINEBOX_POSICOES: sincronização automática não disponível agora.', err);
   }
@@ -8597,16 +8621,25 @@ async function sincronizarEpiAutomatica(silent){
       if(!silent) console.warn('EPI_REGISTROS: cabeçalho inesperado na resposta — sincronização ignorada.');
       return;
     }
-    const novoState = {overrides:{}, excluidos:[]};
+    // Mescla em vez de substituir (ver mesclarListaPorId acima): só ADICIONA
+    // ou ATUALIZA a partir do que a planilha confirma, e só REMOVE o que a
+    // planilha confirma como excluído — nunca apaga um registro local só
+    // porque esta leitura pontual ainda não alcançou aquele id.
+    if(!epiState || typeof epiState !== 'object') epiState = {overrides:{}, excluidos:[]};
+    if(!epiState.overrides) epiState.overrides = {};
+    if(!epiState.excluidos) epiState.excluidos = [];
     linhas.forEach(l=>{
       const id = (l.Id||'').trim();
       if(!id) return;
       const excluido = String(l.Excluido||'').trim().toUpperCase()==='TRUE';
-      if(excluido){ novoState.excluidos.push(id); return; }
+      if(excluido){
+        if(!epiState.excluidos.includes(id)) epiState.excluidos.push(id);
+        delete epiState.overrides[id];
+        return;
+      }
       const ultimaEntrega = (l.UltimaEntrega||'').trim();
-      if(ultimaEntrega) novoState.overrides[id] = {ultimaEntrega};
+      if(ultimaEntrega) epiState.overrides[id] = {ultimaEntrega};
     });
-    epiState = novoState;
     saveEpiState();
     if(document.getElementById('epiTbody')) renderEpiManagement();
   }catch(err){
@@ -9962,18 +9995,22 @@ async function sincronizarRsVagasAutomatica(silent){
       return;
     }
     const novasVagas = [];
+    const idsExcluidos = [];
     linhas.forEach(l=>{
       const id = (l.Id||'').trim();
       if(!id) return;
       const excluido = String(l.Excluido||'').trim().toUpperCase()==='TRUE';
-      if(excluido) return;
+      if(excluido){ idsExcluidos.push(id); return; }
       novasVagas.push({
         id, titulo:(l.Titulo||'').trim(), unidade:(l.Unidade||'').trim(), setor:(l.Setor||'').trim(),
         recrutador:(l.Recrutador||'').trim(), dataAbertura:(l.DataAbertura||'').trim(), prazoLimite:(l.PrazoLimite||'').trim(),
-        custoEstimado:Number(l.CustoEstimado)||0, etapa:(l.Etapa||'').trim(), dataContratacao:(l.DataContratacao||'').trim()||null
+        custoEstimado:parseNumeroPlanilha(l.CustoEstimado), etapa:(l.Etapa||'').trim(), dataContratacao:(l.DataContratacao||'').trim()||null
       });
     });
-    if(novasVagas.length){ rsVagas = novasVagas; saveRsVagas(); if(document.getElementById('rsKanban')||document.getElementById('tab-recrutamento')) renderRsPanel(); }
+    // Mescla em vez de substituir — ver mesclarListaPorId.
+    rsVagas = mesclarListaPorId(rsVagas, novasVagas, idsExcluidos);
+    saveRsVagas();
+    if(document.getElementById('rsKanban')||document.getElementById('tab-recrutamento')) renderRsPanel();
   }catch(err){
     if(!silent) console.warn('RS_VAGAS: sincronização automática não disponível agora.', err);
   }
@@ -11596,11 +11633,12 @@ async function sincronizarEmprestimosAutomatica(silent){
       return;
     }
     const novoState = [];
+    const idsExcluidos = [];
     linhas.forEach(l=>{
       const id = (l.Id||'').trim();
       if(!id) return;
       const excluido = String(l.Excluido||'').trim().toUpperCase()==='TRUE';
-      if(excluido) return; // soft-delete: some da lista visível
+      if(excluido){ idsExcluidos.push(id); return; } // soft-delete: some da lista visível
       let parcelas = [];
       try{ parcelas = JSON.parse(l.ParcelasJSON||'[]'); }catch(e){ parcelas = []; }
       // Mesma tolerância de formatação aplicada ao valor de cada parcela,
@@ -11617,7 +11655,8 @@ async function sincronizarEmprestimosAutomatica(silent){
         criadoEm:(l.CriadoEm||'').trim(), atualizadoEm:(l.AtualizadoEm||'').trim()
       });
     });
-    emprestimosState = novoState;
+    // Mescla em vez de substituir — ver mesclarListaPorId.
+    emprestimosState = mesclarListaPorId(emprestimosState, novoState, idsExcluidos);
     saveEmprestimosStateLocal();
     if(document.getElementById('empTbody')) renderEmprestimosTab();
   }catch(err){
