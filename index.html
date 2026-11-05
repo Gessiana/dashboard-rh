@@ -800,6 +800,30 @@ tbody tr:hover{background:var(--surface-2);}
 .ferias-print-table td{padding:6px 7px;border-bottom:1px solid var(--border);}
 
 /* =========================================================
+   GESTÃO DE FOLGAS E BANCO DE HORAS — módulo dentro da nova aba própria
+   "Mapa de Programação de Férias e Folgas". Reaproveita as mesmas classes
+   genéricas .epi-row-conforme/.epi-check-cell/.epi-actions/.emp-resumo-*
+   já validadas em EPIs/Empréstimos, sem duplicar CSS.
+   ========================================================= */
+.folgas-management-section .panel-title{font-size:17px;}
+.folgas-row-atrasada{background:rgba(239,68,68,0.07);}
+.folgas-row-avencer{background:rgba(245,158,11,0.07);}
+/* Impressão isolada do Relatório de Folgas (botão "Gerar Relatório de
+   Folgas") — mesmo padrão de clone destacado dos demais relatórios. */
+#folgasPrintRoot{display:none;}
+@media print{
+  body.printing-folgas-only > .app{display:none !important;}
+  body.printing-folgas-only #folgasPrintRoot{display:block !important;padding:28px;max-width:1000px;margin:0 auto;}
+}
+.folgas-print-header{margin-bottom:18px;border-bottom:2px solid var(--border-strong);padding-bottom:14px;}
+.folgas-print-title{font-size:19px;font-weight:800;color:var(--ink);margin-bottom:4px;}
+.folgas-print-sub{font-size:11.5px;color:var(--muted);}
+.folgas-print-group-title{font-size:13.5px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;color:var(--ink);margin:18px 0 8px;border-bottom:1.5px solid var(--border-strong);padding-bottom:5px;}
+.folgas-print-table{width:100%;border-collapse:collapse;font-size:10.8px;margin-bottom:6px;}
+.folgas-print-table th{text-align:left;padding:6px 7px;border-bottom:2px solid var(--border-strong);text-transform:uppercase;font-size:9px;color:var(--muted);}
+.folgas-print-table td{padding:6px 7px;border-bottom:1px solid var(--border);}
+
+/* =========================================================
    ONE-PAGER EXECUTIVO — modal de pré-visualização + impressão isolada
    ========================================================= */
 .op-modal-overlay{position:fixed;inset:0;background:rgba(15,23,42,0.55);display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px;}
@@ -1017,6 +1041,7 @@ tbody tr:hover{background:var(--surface-2);}
       <button class="nav-item nav-tab-btn" data-tab="survey"><span class="ico">📝</span><span class="lbl">Pesquisa Interna</span></button>
       <button class="nav-item nav-tab-btn" data-tab="pdi-onboarding"><span class="ico">🚀</span><span class="lbl">PDI &amp; Onboarding</span></button>
       <button class="nav-item nav-tab-btn" data-tab="vencimentos-legais"><span class="ico">⚠️</span><span class="lbl">Vencimentos Legais</span></button>
+      <button class="nav-item nav-tab-btn" data-tab="ferias-folgas"><span class="ico">🏖️</span><span class="lbl">Mapa de Programação de Férias e folgas</span></button>
       <button class="nav-item nav-tab-btn" data-tab="tools"><span class="ico">🛠️</span><span class="lbl">Calculadoras &amp; Geradores</span></button>
       <button class="nav-item nav-tab-btn" data-tab="recrutamento"><span class="ico">🎯</span><span class="lbl">R&amp;S / Vagas</span></button>
       <button class="nav-item nav-tab-btn" data-tab="emprestimos"><span class="ico">💳</span><span class="lbl">Empréstimos</span></button>
@@ -2299,10 +2324,21 @@ tbody tr:hover{background:var(--surface-2);}
           </div>
         </div>
 
-        <!-- ---------- SEÇÃO INFERIOR DEDICADA: GESTÃO & MAPA DE PROGRAMAÇÃO DE FÉRIAS ----------
-             Abaixo da seção de EPIs, separada por divisor — mesma base de colaboradores
-             ativos e mesmos filtros de Loja/Unidade e Setor da aba (vencFiltros). -->
-        <div class="epi-section-divider section-gap"></div>
+      </section>
+
+      <!-- ---------- TAB: MAPA DE PROGRAMAÇÃO DE FÉRIAS E FOLGAS ----------
+           Aba própria e independente (antes era uma seção interna de
+           "Controle de Vencimentos Legais"). Reúne o Mapa de Programação de
+           Férias já existente e, abaixo, o novo módulo de Gestão de Folgas
+           e Banco de Horas. -->
+      <section class="tab-panel" id="tab-ferias-folgas">
+        <div class="panel-header">
+          <div>
+            <div class="panel-title">🏖️ Mapa de Programação de Férias e Folgas</div>
+            <div class="panel-sub">Limite legal de gozo de férias, controle do passivo por unidade e gestão de banco de horas / folgas compensatórias (conversão 9h = 1 dia, com prazo definitivo semestral — 30/06 ou 31/12).</div>
+          </div>
+        </div>
+
         <div class="vacation-management-section">
           <div class="panel-header">
             <div>
@@ -2364,6 +2400,150 @@ tbody tr:hover{background:var(--surface-2);}
                   <th style="width:90px;text-align:center;">Gozo Concluído/<br>Recebido?</th><th style="width:170px;">Ações</th>
                 </tr></thead>
                 <tbody id="feriasTbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ---------- NOVO MÓDULO: GESTÃO DE FOLGAS E BANCO DE HORAS ----------
+             Lançamentos de horas são agrupados por Colaborador + Mês de
+             Referência (somando todos os lançamentos do mês antes de
+             aplicar a regra) e convertidos em folga (9h = 1 dia). Status:
+             Pendente até o fim do mês de referência, Folga Vencida depois
+             disso, com data-limite definitiva fixa no semestre (30/06 para
+             Jan–Jun, 31/12 para Jul–Dez). Sincronizado em tempo real via
+             Google Sheets (aba FOLGAS_LANCAMENTOS), mesmo mecanismo JSONP
+             genérico já usado por Empréstimos/EPI/Kanban/R&amp;S-Vagas/9Box. -->
+        <div class="epi-section-divider section-gap"></div>
+        <div class="folgas-management-section">
+          <div class="panel-header">
+            <div>
+              <div class="panel-title">🕐 Gestão de Folgas e Banco de Horas</div>
+              <div class="panel-sub">Conversão automática de banco de horas em dias de folga (9h = 1 dia, somando todos os lançamentos do colaborador no mês) e controle do prazo definitivo semestral (30/06 ou 31/12) para concessão/pagamento</div>
+            </div>
+          </div>
+
+          <div class="card section-gap">
+            <div class="form-row" style="margin-bottom:0;align-items:flex-end;">
+              <div class="form-field">
+                <label>Mês de Referência</label>
+                <select id="folgasFilterMesReferencia" style="min-width:170px;">
+                  <option value="">Todos os Meses</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Período (quando "Todos os Meses")</label>
+                <select id="folgasFilterPeriodo" style="min-width:160px;">
+                  <option value="mes">Mês Atual</option>
+                  <option value="trimestre">Últimos 3 Meses</option>
+                  <option value="semestre">Últimos 6 Meses</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Colaborador</label>
+                <input type="text" id="folgasFilterColaborador" placeholder="Buscar por nome..." style="min-width:200px;">
+              </div>
+              <div class="form-field">
+                <label>Loja / Unidade</label>
+                <select id="folgasFilterLoja" style="min-width:200px;"><option value="todas">Todas as Lojas</option></select>
+              </div>
+              <div class="form-field">
+                <label>Setor</label>
+                <select id="folgasFilterSetor" style="min-width:200px;"><option value="todos">Todos os Setores</option></select>
+              </div>
+              <button class="btn btn-ghost btn-sm no-print" id="btnGerarRelatorioFolgas" type="button">🖨️ Gerar Relatório de Folgas</button>
+            </div>
+          </div>
+
+          <div class="grid grid-4">
+            <div class="card kpi">
+              <div class="kpi-label">Folgas Geradas no Mês</div>
+              <div class="kpi-value good" id="folgas-kpi-geradas">0</div>
+              <div class="kpi-foot">Dias apurados no fechamento mais recente (dia 08) — no filtro atual</div>
+            </div>
+            <div class="card kpi">
+              <div class="kpi-label">Folgas a Vencer no Mês</div>
+              <div class="kpi-value critical" id="folgas-kpi-avencer">0</div>
+              <div class="kpi-foot">Mês de referência já encerrado, ainda sem concessão — status "Folga Vencida", prioridade alta</div>
+            </div>
+            <div class="card kpi">
+              <div class="kpi-label">Folgas Acumuladas (Saldo Total)</div>
+              <div class="kpi-value orange" id="folgas-kpi-acumuladas">0</div>
+              <div class="kpi-foot">Dias pendentes de concessão em todos os grupos ativos — no filtro atual</div>
+            </div>
+            <div class="card kpi">
+              <div class="kpi-label">Folgas Atrasadas (Prazo Definitivo Vencido)</div>
+              <div class="kpi-value critical" id="folgas-kpi-atrasadas">0</div>
+              <div class="kpi-foot">Já ultrapassaram a data-limite definitiva do semestre (30/06 ou 31/12) sem concessão — pagamento obrigatório</div>
+            </div>
+          </div>
+
+          <div class="grid grid-2 section-gap">
+            <div class="card">
+              <h3>Status das Folgas (Dias)</h3>
+              <div class="chart-box"><canvas id="chartFolgasStatus"></canvas></div>
+            </div>
+            <div class="card">
+              <h3>🏆 Ranking — Maior Saldo de Folgas Próximas do Vencimento</h3>
+              <div class="chart-box"><canvas id="chartFolgasRanking"></canvas></div>
+            </div>
+          </div>
+
+          <div class="card section-gap">
+            <h3>📋 Colaboradores com Folgas a Vencer no Mês (Mural)</h3>
+            <div class="bday-grid section-gap" id="folgasMesGrid"></div>
+          </div>
+
+          <div class="card section-gap">
+            <h3 style="margin-bottom:10px;">➕ Lançamento Mensal de Banco de Horas (Fechamento Dia 08)</h3>
+            <div class="form-row">
+              <div class="form-field">
+                <label>Colaborador</label>
+                <select id="folgasLancColaboradorSelect" style="min-width:260px;"></select>
+              </div>
+              <div class="form-field">
+                <label>Mês de Referência</label>
+                <input type="month" id="folgasLancData">
+              </div>
+              <div class="form-field">
+                <label>Horas Lançadas Neste Registro (HH:MM)</label>
+                <input type="text" id="folgasLancHoras" placeholder="Ex.: 12:31 ou 6,5" style="width:120px;">
+              </div>
+              <div class="form-field">
+                <label>Prévia (Dias Gerados / Saldo Residual)</label>
+                <input type="text" id="folgasLancDiasPreview" readonly style="background:var(--surface-2);min-width:220px;" value="0 dia(s) · saldo residual previsto 00:00">
+              </div>
+              <button class="btn btn-primary btn-sm" id="btnLancarFolga" type="button">💾 Registrar Lançamento</button>
+            </div>
+            <div class="hint">Aceita horas e minutos no formato HH:MM (ex.: 12:31) ou decimal (ex.: 6,5). As horas lançadas são somadas a outros lançamentos do mesmo colaborador no mesmo Mês de Referência antes de aplicar a regra (Ex.: 06:00 + 03:00 = 09:00 = 1 dia). Cálculo: Dias Gerados = minutos totais acumulados ÷ 540 (9h), arredondado para baixo; o restante (Saldo Residual) é transportado automaticamente como saldo anterior do mês seguinte. Após o lançamento, os campos de Horas Acumuladas e Dias Gerados ficam editáveis diretamente na tabela abaixo, a qualquer momento, para correção manual (recalcula a cadeia de transporte dos meses seguintes).</div>
+
+            <div class="table-wrap section-gap" style="max-height:420px;">
+              <table>
+                <thead><tr>
+                  <th>Colaborador</th><th>Loja/Unidade</th><th style="width:130px;">Mês de Referência</th>
+                  <th style="width:110px;">Horas Acumuladas</th>
+                  <th style="width:110px;">Dias Gerados</th><th style="width:110px;">Saldo Residual</th>
+                  <th>Prazo Definitivo (Semestre)</th><th style="width:70px;">Ações</th>
+                </tr></thead>
+                <tbody id="folgasLancTbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card section-gap">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+              <h3 style="margin-bottom:0;">Gestão de Folgas — Saldo e Prazos por Colaborador</h3>
+              <div class="hint" id="folgasGestaoCountInfo"></div>
+            </div>
+            <div class="table-wrap" style="max-height:560px;">
+              <table>
+                <thead><tr>
+                  <th>Matrícula</th><th>Colaborador</th><th>Loja/Unidade</th>
+                  <th style="width:110px;">Geradas no Mês</th><th style="width:110px;">Acumuladas</th>
+                  <th style="width:110px;">A Vencer no Mês</th><th>Prazo Mais Próximo</th><th>Status</th>
+                  <th style="width:220px;">Ações</th>
+                </tr></thead>
+                <tbody id="folgasGestaoTbody"></tbody>
               </table>
             </div>
           </div>
@@ -2856,6 +3036,44 @@ tbody tr:hover{background:var(--surface-2);}
   </div>
 </div>
 <div id="feriasPrintRoot"></div>
+
+<!-- Modal "Gerenciar Folgas" — Gestão de Folgas e Banco de Horas (reaproveita
+     a mesma estrutura/CSS dos demais modais). Mostra TODOS os grupos/dias de
+     folga do colaborador (ordem FIFO: Mês de Referência mais antigo primeiro),
+     cada "dia" individual com seu próprio checklist de concessão — mesmo
+     padrão das parcelas de Empréstimos (renderParcelasEdicao/onCronogramaTbodyChange). -->
+<div class="op-modal-overlay hidden" id="folgasGerenciarOverlay">
+  <div class="op-modal" style="max-width:720px;">
+    <div class="op-modal-header">
+      <div class="op-modal-title" id="folgasGerenciarTitulo">🕐 Gerenciar Folgas</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" id="btnFolgasGerenciarFechar" type="button">✕ Fechar</button>
+      </div>
+    </div>
+    <div class="op-modal-body">
+      <input type="hidden" id="folgasGerenciarMatricula">
+      <div class="hint" id="folgasGerenciarInfo" style="margin-bottom:10px;"></div>
+      <div class="table-wrap" style="max-height:400px;">
+        <table>
+          <thead><tr>
+            <th>Grupo (Mês Ref.)</th><th>Prazo Definitivo</th><th style="width:60px;">Dia Nº</th>
+            <th style="width:90px;text-align:center;">Concedida?</th><th style="width:150px;">Data da Concessão</th>
+          </tr></thead>
+          <tbody id="folgasGerenciarDiasTbody"></tbody>
+        </table>
+      </div>
+      <div class="emp-resumo-parcelas" id="folgasGerenciarResumo">
+        <div><span>Folgas Acumuladas (Saldo)</span><strong id="folgasGerenciarResumoSaldo">0</strong></div>
+        <div><span>Folgas Já Concedidas</span><strong class="emp-resumo-good" id="folgasGerenciarResumoConcedidas">0</strong></div>
+        <div><span>Prazo Mais Próximo</span><strong class="emp-resumo-critical" id="folgasGerenciarResumoPrazo">—</strong></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+        <button class="btn btn-primary" id="btnFolgasGerenciarSalvar" type="button">💾 Salvar Alterações</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="folgasPrintRoot"></div>
 <div id="surveyPlanPrintRoot"></div>
 
 <!-- Modal "Relatório de Rastreabilidade/Auditoria (🕸️)" — acesso exclusivo
@@ -3021,7 +3239,7 @@ const SISTEMA_USUARIOS = {
    PDI & Onboarding — e também Analytics/Kanban, que não constavam da lista
    de liberadas). O botão de Auditoria (🕸️) é tratado à parte, nunca
    incluído aqui. */
-const ABAS_LIBERADAS_RESTRITO_DP = ['overview','birthdays','vencimentos-legais','recrutamento','tools','emprestimos'];
+const ABAS_LIBERADAS_RESTRITO_DP = ['overview','birthdays','vencimentos-legais','ferias-folgas','recrutamento','tools','emprestimos'];
 const LOGIN_SESSION_KEY = 'hr_login_sessao_v1';
 let usuarioLogado = null;
 
@@ -3734,7 +3952,7 @@ function avisarFalhaSincronizacaoCompartilhada(modulo, err){
    manual em "Atualizar Dados em Tempo Real"). */
 const INTERVALO_POLLING_COMPARTILHADO_MS = 45000;
 let __pollingCompartilhadoTimer = null;
-/* Executa as 9 sincronizações compartilhadas em SEQUÊNCIA (uma de cada vez,
+/* Executa as 10 sincronizações compartilhadas em SEQUÊNCIA (uma de cada vez,
    nunca em paralelo). Disparar todas simultaneamente (como antes) fazia as
    últimas da lista falharem com erro de conexão de forma intermitente —
    o Apps Script/navegador recusa chamadas quando há muitas requisições
@@ -3747,6 +3965,7 @@ async function sincronizarTodosModulosCompartilhados(silent){
     sincronizarTDAutomatica,
     sincronizarAdmDeslAutomatica,
     sincronizarEmprestimosAutomatica,
+    sincronizarFolgasAutomatica,
     sincronizarEpiAutomatica,
     sincronizarKanbanAutomatica,
     sincronizarRsVagasAutomatica,
@@ -3877,9 +4096,9 @@ async function carregarDadosIniciais(){
     loadMockData();
     setDsMsg('Não foi possível carregar a planilha em tempo real agora (Apps Script indisponível) — exibindo Mock Data. Use "🔄 Atualizar Dados em Tempo Real" para tentar novamente, ou "🔗 Testar link em nova aba" para conferir se o link está público.', true);
   }
-  // Sincronização automática dos 9 módulos compartilhados (Pesquisa Interna,
-  // Férias, T&D/PDI, Checklist Adm/Desl, Empréstimos, EPI, Kanban, R&S/Vagas
-  // e 9Box) — fire-and-forget (não bloqueia a carga principal do dashboard),
+  // Sincronização automática dos 10 módulos compartilhados (Pesquisa Interna,
+  // Férias, T&D/PDI, Checklist Adm/Desl, Empréstimos, Folgas/Banco de Horas,
+  // EPI, Kanban, R&S/Vagas e 9Box) — fire-and-forget (não bloqueia a carga principal do dashboard),
   // mas executada em SEQUÊNCIA internamente para não sobrecarregar o Apps
   // Script com chamadas simultâneas (ver sincronizarTodosModulosCompartilhados).
   sincronizarTodosModulosCompartilhados(true);
@@ -4030,6 +4249,7 @@ function renderTab(tab){
       case 'tools': renderTabelaAdmDesl(); break;
       case 'pdi-onboarding': renderTDPanel(); break;
       case 'vencimentos-legais': renderVencimentosLegais(); break;
+      case 'ferias-folgas': renderFeriasFolgasTab(); break;
       case 'recrutamento': renderRsPanel(); break;
       case 'emprestimos': renderEmprestimosTab(); break;
     }
@@ -4277,7 +4497,7 @@ function imprimirMuralAniversariantes(){
 function refreshEmployeeSelects(){
   const ativos = getFilteredData().filter(isAtivo).slice().sort((a,b)=>a.Nome.localeCompare(b.Nome));
   const opts = ativos.map(e=>`<option value="${escapeHtml(e.Matricula)}">${escapeHtml(e.Nome)} — ${escapeHtml(e.Cargo)}</option>`).join('');
-  ['msgEmployeeSelect','nbEmployeeSelect','empColaboradorSelect'].forEach(id=>{ const el=$(id); if(el){ const cur=el.value; el.innerHTML = opts || '<option value="">Nenhum colaborador ativo no filtro</option>'; if(cur) el.value=cur; } });
+  ['msgEmployeeSelect','nbEmployeeSelect','empColaboradorSelect','folgasLancColaboradorSelect'].forEach(id=>{ const el=$(id); if(el){ const cur=el.value; el.innerHTML = opts || '<option value="">Nenhum colaborador ativo no filtro</option>'; if(cur) el.value=cur; } });
   // quickMsgColabSelect (Central de Mensagens Rápidas) mantém uma opção em
   // branco, pois o campo "Nome Avulso" permite gerar mensagens sem vínculo
   // com um colaborador/candidato já cadastrado na base.
@@ -8484,7 +8704,14 @@ function renderVencimentosLegais(){
   $('vencCountInfo').textContent = `${linhasFiltradas.length} registro(s) — ordenado por urgência.`;
 
   renderEpiManagement();
+}
+/* Aba própria "Mapa de Programação de Férias e Folgas" — reúne o Mapa de
+   Férias já existente (renderVacationManagement) e o novo módulo de Gestão
+   de Folgas e Banco de Horas (renderFolgasTab), antes ambos nested dentro
+   de Controle de Vencimentos Legais. */
+function renderFeriasFolgasTab(){
   renderVacationManagement();
+  renderFolgasTab();
 }
 /* Monta a descrição textual dos filtros ativos (barra lateral global + os
    5 filtros próprios da aba, incluindo Loja/Unidade e Setor) para compor o
@@ -9373,6 +9600,828 @@ function imprimirMapaFerias(){
   window.print();
   document.body.classList.remove('printing-ferias-only');
   printRoot.innerHTML = '';
+}
+
+/* =====================================================================
+   GESTÃO DE FOLGAS E BANCO DE HORAS — módulo dentro da aba "Mapa de
+   Programação de Férias e Folgas".
+   REGRA DE NEGÓCIO VIGENTE (v3 — entrada em HH:MM, base em minutos,
+   transporte de saldo residual entre meses, fechamento semestral):
+     • Entrada de horas aceita o formato HH:MM (ex.: "12:31") ou decimal
+       (ex.: "6,5"/"6.5") — ver parseHorasParaMinutos(). Internamente TUDO
+       é processado em MINUTOS inteiros (nunca horas fracionárias), para
+       precisão absoluta — ver formatarMinutosEmHoraMinuto() para exibir
+       de volta no formato HH:MM.
+     • Lançamentos de horas são AGRUPADOS e SOMADOS por Colaborador + Mês
+       de Referência antes de qualquer regra ser aplicada (histórico
+       empilhado em grupo.historico, nunca um registro paralelo — ver
+       registrarNovoLancamentoFolga()). Ex.: 06:00 + 03:00 no mesmo mês
+       somam 09:00.
+     • Conversão: 9h = 540 minutos. Dias de Folga Gerados = Math.floor
+       (Minutos Totais Acumulados no mês / 540). O restante da divisão é
+       o Saldo Residual (Minutos Totais % 540), formatado em HH:MM.
+     • Transporte automático (carry-over): o Saldo Residual de um Mês de
+       Referência é somado automaticamente aos minutos lançados do MÊS
+       SEGUINTE do mesmo colaborador, antes de aplicar a conversão —
+       formando uma cadeia mês a mês por colaborador. Ver
+       recalcularCadeiaFolgasColaborador()/recalcularTodasCadeiasFolgas().
+       Uma correção manual (Horas Acumuladas ou Dias Gerados editados
+       diretamente na tabela) recalcula automaticamente toda a cadeia de
+       meses seguintes daquele colaborador.
+     • Status: Pendente enquanto dentro do próprio Mês de Referência;
+       Folga Vencida a partir do mês seguinte em diante; Prazo Definitivo
+       (limite legal de concessão/pagamento obrigatório) fixo em 30/06
+       para Mês de Referência em Janeiro–Junho, ou 31/12 para Julho–
+       Dezembro — ver classificarStatusDia()/prazoDefinitivoSemestral().
+     • "Registrar Folga Tirada" consome em ordem FIFO: o grupo
+       (colaborador + mês) mais antigo com saldo pendente primeiro.
+   Sincronização em tempo real via Google Sheets (aba FOLGAS_LANCAMENTOS)
+   usando o mesmo mecanismo JSONP genérico de Empréstimos/EPI/Kanban/
+   R&S-Vagas/9Box (buscarCSVGenericoViaJSONP/enviarRegistroGenericoViaJSONP)
+   e o mesmo padrão de mesclagem (mesclarListaPorId) para nunca perder
+   lançamentos locais ainda não confirmados na planilha.
+   ===================================================================== */
+const FOLGAS_STORAGE_KEY = 'hr_folgas_grupos_v3';
+const FOLGAS_SHEET_ABA = 'FOLGAS_LANCAMENTOS';
+/* folgasGrupos: um registro por Colaborador + Mês de Referência (nunca um
+   por lançamento isolado):
+   {id, matricula, colaborador, loja, setor, mesReferencia:'YYYY-MM',
+    historico:[{minutos, dataLancamento}], minutosManual:number|null,
+    diasGeradosManual:number|null, dias:[{numero,tirado,dataTirado}],
+    excluido, criadoEm, atualizadoEm}
+   Campos calculados a cada render (NÃO persistidos — sempre recalculados
+   por recalcularCadeiaFolgasColaborador, prefixo "_"): _minutosLancadosMes,
+   _saldoAnteriorMin, _minutosTotal, _diasGerados, _saldoResidualMin. */
+let folgasGrupos = [];
+let folgasFiltros = {periodo:'mes', mesReferencia:'', colaborador:'', loja:'todas', setor:'todos'};
+
+function loadFolgasState(){
+  try{
+    const raw = localStorage.getItem(FOLGAS_STORAGE_KEY);
+    folgasGrupos = raw ? JSON.parse(raw) : [];
+  }catch(err){ console.error('Falha ao carregar '+FOLGAS_STORAGE_KEY+':', err); folgasGrupos = []; }
+}
+function saveFolgasStateLocal(){
+  try{ localStorage.setItem(FOLGAS_STORAGE_KEY, JSON.stringify(folgasGrupos)); }
+  catch(err){ console.error('Falha ao salvar '+FOLGAS_STORAGE_KEY+':', err); }
+}
+
+/* Baixa FOLGAS_LANCAMENTOS e MESCLA (nunca substitui — ver mesclarListaPorId)
+   no folgasGrupos local — mesmo espírito de sincronizarEmprestimosAutomatica. */
+async function sincronizarFolgasAutomatica(silent){
+  try{
+    const csvText = await buscarCSVGenericoViaJSONP(FOLGAS_SHEET_ABA);
+    if(!csvText || !csvText.trim()) return; // aba ainda não existe (nenhum lançamento salvo ainda)
+    const linhas = parseCSVText(csvText);
+    if(!linhas.length) return;
+    const temColunaId = Object.keys(linhas[0]).some(h=> normalizeHeaderKey(h)==='id');
+    if(!temColunaId){
+      if(!silent) console.warn('FOLGAS_LANCAMENTOS: cabeçalho inesperado na resposta — sincronização ignorada.');
+      return;
+    }
+    const novoState = [];
+    const idsExcluidos = [];
+    linhas.forEach(l=>{
+      const id = (l.Id||'').trim();
+      if(!id) return;
+      const excluido = String(l.Excluido||'').trim().toUpperCase()==='TRUE';
+      if(excluido){ idsExcluidos.push(id); return; }
+      let dias = [], historico = [];
+      try{ dias = JSON.parse(l.DiasJSON||'[]'); }catch(e){ dias = []; }
+      try{ historico = JSON.parse(l.HistoricoJSON||'[]'); }catch(e){ historico = []; }
+      const minutosManualTxt = (l.MinutosManual||'').trim();
+      const diasManualTxt = (l.DiasGeradosManual||'').trim();
+      novoState.push({
+        id, matricula:(l.Matricula||'').trim(), colaborador:(l.Colaborador||'').trim(),
+        loja:(l.Loja||'').trim(), setor:(l.Setor||'').trim(),
+        mesReferencia:(l.MesReferencia||'').trim(),
+        historico:(historico||[]),
+        minutosManual: minutosManualTxt ? parseNumeroPlanilha(minutosManualTxt) : null,
+        diasGeradosManual: diasManualTxt ? parseNumeroPlanilha(diasManualTxt) : null,
+        dias:(dias||[]), excluido:false,
+        criadoEm:(l.CriadoEm||'').trim(), atualizadoEm:(l.AtualizadoEm||'').trim()
+      });
+    });
+    // Mescla em vez de substituir — ver mesclarListaPorId.
+    folgasGrupos = mesclarListaPorId(folgasGrupos, novoState, idsExcluidos);
+    saveFolgasStateLocal();
+    if(document.getElementById('folgasGestaoTbody')) renderFolgasTab();
+  }catch(err){
+    if(!silent) console.warn('FOLGAS_LANCAMENTOS: sincronização automática não disponível agora.', err);
+  }
+}
+
+async function salvarFolgaGrupoNaPlanilha(grupo){
+  try{
+    const registro = {
+      id: grupo.id, matricula: grupo.matricula, colaborador: grupo.colaborador, loja: grupo.loja, setor: grupo.setor,
+      mesReferencia: grupo.mesReferencia, historico: grupo.historico,
+      minutosManual: grupo.minutosManual, diasGeradosManual: grupo.diasGeradosManual,
+      dias: grupo.dias, excluido: grupo.excluido ? 'TRUE':'FALSE', criadoEm: grupo.criadoEm
+    };
+    const resp = await enviarRegistroGenericoViaJSONP('salvarFolgaLancamento', registro);
+    if(resp && resp.error) throw new Error(resp.error);
+    return true;
+  }catch(err){
+    avisarFalhaSincronizacaoCompartilhada('Folgas/Banco de Horas', err);
+    return false;
+  }
+}
+/* Persiste TODOS os grupos (meses) de um colaborador — necessário sempre
+   que a cadeia de transporte é recalculada, porque uma correção em um mês
+   pode alterar o Saldo Residual (e portanto os "dias" gerados) de todos os
+   meses seguintes daquele colaborador. */
+async function persistirCadeiaFolgasColaborador(matricula){
+  const grupos = folgasGrupos.filter(g=> g.matricula===matricula);
+  for(const g of grupos){ await salvarFolgaGrupoNaPlanilha(g); }
+}
+
+/* ---------------------------------------------------------------------
+   CÁLCULOS BASE — parsing HH:MM ↔ minutos, agrupamento/soma, conversão
+   9h (540min) = 1 dia, cadeia de transporte de saldo residual entre
+   meses, geração de "dias" preservando concessões, e prazos do
+   fechamento semestral.
+   --------------------------------------------------------------------- */
+/* Aceita "12:31" (12h31min) ou decimal "6,5"/"6.5" (6h30min) e devolve
+   SEMPRE o total em minutos inteiros — base de todo o cálculo interno. */
+function parseHorasParaMinutos(input){
+  if(input==null) return 0;
+  const str = String(input).trim();
+  if(!str) return 0;
+  const mHHMM = /^(\d{1,4}):([0-5]?\d)$/.exec(str);
+  if(mHHMM) return Number(mHHMM[1])*60 + Number(mHHMM[2]);
+  const num = Number(str.replace(',','.'));
+  if(!isNaN(num)) return Math.round(num*60);
+  return 0;
+}
+/* Formata minutos totais de volta no formato amigável HH:MM (ex.: 191
+   minutos -> "03:11"). */
+function formatarMinutosEmHoraMinuto(totalMin){
+  const min = Math.max(0, Math.round(Number(totalMin)||0));
+  const hh = Math.floor(min/60);
+  const mm = min % 60;
+  return String(hh).padStart(2,'0')+':'+String(mm).padStart(2,'0');
+}
+function somarMinutosHistorico(historico){
+  return (historico||[]).reduce((s,h)=> s + (Number(h.minutos)||0), 0);
+}
+const MINUTOS_POR_FOLGA = 540; // 9h × 60min
+function diasGeradosDeMinutos(minutos){ return Math.floor((Number(minutos)||0)/MINUTOS_POR_FOLGA); }
+function gerarDiasFolgaArray(qtd){
+  const dias = [];
+  for(let i=0;i<qtd;i++) dias.push({numero:i+1, tirado:false, dataTirado:''});
+  return dias;
+}
+function regenerarDiasFolgaPreservando(diasAtuais, novaQtd){
+  const jaConcedidos = {};
+  (diasAtuais||[]).forEach(d=>{ if(d.tirado) jaConcedidos[d.numero] = d; });
+  const novos = gerarDiasFolgaArray(novaQtd);
+  return novos.map(d=> jaConcedidos[d.numero] ? jaConcedidos[d.numero] : d);
+}
+/* CADEIA DE TRANSPORTE — percorre, em ordem cronológica, todos os grupos
+   (meses) de UM colaborador e aplica, mês a mês:
+     minutosLançadosDoMês = soma do histórico (lançamentos somados)
+     minutosTotal = minutosManual (override) OU minutosLançadosDoMês + saldo
+                    residual transportado do mês anterior
+     diasGerados  = diasGeradosManual (override) OU floor(minutosTotal/540)
+     saldoResidual = minutosTotal − diasGerados×540 (nunca negativo)
+     -> esse saldoResidual é o saldo anterior do PRÓXIMO mês do mesmo
+        colaborador.
+   Regenera grupo.dias preservando concessões (tirado=true) sempre que a
+   quantidade de dias gerados mudar, e grava os campos calculados efêmeros
+   (prefixo "_") usados pela UI — nunca persistidos diretamente, sempre
+   recalculados a partir de historico/minutosManual/diasGeradosManual. */
+function recalcularCadeiaFolgasColaborador(matricula){
+  const grupos = folgasGrupos.filter(g=> !g.excluido && g.matricula===matricula)
+    .sort((a,b)=> a.mesReferencia.localeCompare(b.mesReferencia));
+  let saldoAnteriorMin = 0;
+  grupos.forEach(g=>{
+    const minutosLancadosMes = somarMinutosHistorico(g.historico);
+    const minutosTotal = g.minutosManual != null ? g.minutosManual : (minutosLancadosMes + saldoAnteriorMin);
+    let diasGerados, saldoResidualMin;
+    if(g.diasGeradosManual != null){
+      diasGerados = g.diasGeradosManual;
+      saldoResidualMin = Math.max(0, minutosTotal - diasGerados*MINUTOS_POR_FOLGA);
+    } else {
+      diasGerados = diasGeradosDeMinutos(minutosTotal);
+      saldoResidualMin = minutosTotal % MINUTOS_POR_FOLGA;
+    }
+    g.dias = regenerarDiasFolgaPreservando(g.dias, diasGerados);
+    g._minutosLancadosMes = minutosLancadosMes;
+    g._saldoAnteriorMin = saldoAnteriorMin;
+    g._minutosTotal = minutosTotal;
+    g._diasGerados = diasGerados;
+    g._saldoResidualMin = saldoResidualMin;
+    saldoAnteriorMin = saldoResidualMin;
+  });
+  return grupos;
+}
+/* Recalcula a cadeia de TODOS os colaboradores com algum grupo ativo —
+   chamada antes de qualquer leitura dos campos efêmeros (_diasGerados
+   etc.), garantindo que o transporte de saldo residual entre meses esteja
+   sempre em dia mesmo após uma sincronização externa da planilha. */
+function recalcularTodasCadeiasFolgas(){
+  const matriculas = Array.from(new Set(folgasGrupos.filter(g=>!g.excluido).map(g=>g.matricula)));
+  matriculas.forEach(mat=> recalcularCadeiaFolgasColaborador(mat));
+}
+/* Último dia do Mês de Referência — fim da janela "Pendente". */
+function ultimoDiaMesReferencia(mesRefStr){
+  const m = /^(\d{4})-(\d{2})$/.exec(mesRefStr||''); if(!m) return null;
+  return new Date(Number(m[1]), Number(m[2]), 0); // dia 0 do mês seguinte = último dia deste mês
+}
+/* Prazo Definitivo do fechamento semestral — 30/06 quando o Mês de
+   Referência está em Janeiro–Junho, ou 31/12 quando está em Julho–
+   Dezembro, sempre no mesmo ano civil do Mês de Referência. Após esta
+   data a folga deve ser obrigatoriamente concedida ou paga. */
+function prazoDefinitivoSemestral(mesRefStr){
+  const m = /^(\d{4})-(\d{2})$/.exec(mesRefStr||''); if(!m) return null;
+  const ano = Number(m[1]), mes = Number(m[2]);
+  return (mes>=1 && mes<=6) ? new Date(ano,5,30) : new Date(ano,11,31);
+}
+function formatarMesReferencia(mesRefStr){
+  const m = /^(\d{4})-(\d{2})$/.exec(mesRefStr||''); if(!m) return '—';
+  const d = new Date(Number(m[1]), Number(m[2])-1, 1);
+  const nome = d.toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+  return nome.charAt(0).toUpperCase()+nome.slice(1);
+}
+const FOLGAS_STATUS_INFO = {
+  vencidaDefinitivo: {label:'⚠️ Vencida — Prazo Definitivo Expirado (Concessão/Pagto. Obrigatório)', badge:'critical'},
+  vencida:           {label:'🔴 Folga Vencida', badge:'critical'},
+  pendente:          {label:'🟡 Pendente', badge:'warning'},
+  semsaldo:          {label:'⚪ Sem Saldo Pendente', badge:'neutral'}
+};
+/* Classifica 1 dia de folga pendente conforme a regra de fechamento
+   semestral, a partir do Mês de Referência do grupo a que ele pertence. */
+function classificarStatusDia(mesRefStr, hoje){
+  const fimMes = ultimoDiaMesReferencia(mesRefStr);
+  const prazoDefinitivo = prazoDefinitivoSemestral(mesRefStr);
+  if(fimMes && hoje <= fimMes) return 'pendente';
+  if(prazoDefinitivo && hoje <= prazoDefinitivo) return 'vencida';
+  return 'vencidaDefinitivo';
+}
+
+/* ---------------------------------------------------------------------
+   FILTROS DA ABA (Período, Mês de Referência, Colaborador, Loja, Setor)
+   — independentes dos filtros de Vencimentos Legais (vencFiltros). O
+   seletor de Mês de Referência é a base de toda a apuração: quando
+   preenchido, restringe Lançamento + Gestão + Relatório a esse mês
+   específico; quando vazio ("Todos os Meses"), a Gestão permanece
+   cumulativa (todos os grupos ativos) e o Lançamento/Relatório usam a
+   janela do filtro Período.
+   --------------------------------------------------------------------- */
+function getFolgasBaseAtiva(){
+  let base = getFilteredData().filter(isAtivo);
+  if(folgasFiltros.loja !== 'todas') base = base.filter(e=> e.Unidade_Alocacao===folgasFiltros.loja);
+  if(folgasFiltros.setor !== 'todos') base = base.filter(e=> e.Setor===folgasFiltros.setor);
+  if(folgasFiltros.colaborador.trim()){
+    const termo = folgasFiltros.colaborador.trim().toLowerCase();
+    base = base.filter(e=> (e.Nome||'').toLowerCase().includes(termo));
+  }
+  return base;
+}
+function populateFolgasFiltrosSelects(){
+  const selLoja = $('folgasFilterLoja');
+  if(selLoja){
+    const cur = selLoja.value;
+    const lojas = Array.from(new Set(rawData.map(e=>e.Unidade_Alocacao).filter(Boolean)));
+    selLoja.innerHTML = '<option value="todas">Todas as Lojas</option>' + lojas.map(u=>`<option value="${escapeHtml(u)}">${escapeHtml(labelUnidadeAmigavel(u))}</option>`).join('');
+    if(cur) selLoja.value = cur;
+  }
+  const selSetor = $('folgasFilterSetor');
+  if(selSetor){
+    const cur = selSetor.value;
+    const setores = Array.from(new Set(rawData.map(e=>e.Setor).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+    selSetor.innerHTML = '<option value="todos">Todos os Setores</option>' + setores.map(s=>`<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join('');
+    if(cur) selSetor.value = cur;
+  }
+  const selMes = $('folgasFilterMesReferencia');
+  if(selMes){
+    const cur = selMes.value;
+    const meses = Array.from(new Set(folgasGrupos.filter(g=>!g.excluido).map(g=>g.mesReferencia).filter(Boolean))).sort().reverse();
+    selMes.innerHTML = '<option value="">Todos os Meses</option>' + meses.map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(formatarMesReferencia(m))}</option>`).join('');
+    if(cur) selMes.value = cur;
+  }
+}
+/* Janela de tempo aplicada quando o filtro de Mês de Referência está em
+   "Todos" — usada pela tabela de Lançamentos e pelo Relatório. */
+function dentroDoPeriodoFiltroFolgas(mesRefStr){
+  const d = ultimoDiaMesReferencia(mesRefStr); if(!d) return false;
+  const hoje = new Date();
+  if(folgasFiltros.periodo==='mes') return d.getMonth()===hoje.getMonth() && d.getFullYear()===hoje.getFullYear();
+  const mesesJanela = folgasFiltros.periodo==='trimestre' ? 3 : 6;
+  const limiteInferior = addMesesData(hoje, -mesesJanela);
+  return d >= limiteInferior && d <= hoje;
+}
+/* Um grupo atende ao filtro de tempo quando bate exatamente com o Mês de
+   Referência selecionado (se houver) ou, na ausência dele, com a janela
+   do filtro Período. */
+function folgaGrupoAtendeFiltroTempo(grupo){
+  if(folgasFiltros.mesReferencia) return grupo.mesReferencia === folgasFiltros.mesReferencia;
+  return dentroDoPeriodoFiltroFolgas(grupo.mesReferencia);
+}
+
+/* ---------------------------------------------------------------------
+   AGREGAÇÃO POR COLABORADOR — saldo, prazos e as duas métricas (Folgas
+   Geradas no Mês / Folgas a Vencer no Mês), a partir da cadeia de
+   transporte de saldo residual (recalcularTodasCadeiasFolgas) e da regra
+   de fechamento semestral. Consumo de folga (FIFO) segue a ordem do Mês
+   de Referência mais antigo primeiro.
+   --------------------------------------------------------------------- */
+function montarResumoFolgasPorColaborador(baseAtiva, respeitarFiltroTempoNaGestao){
+  recalcularTodasCadeiasFolgas();
+  const hoje = new Date();
+  const porMatricula = {};
+  baseAtiva.forEach(e=>{ porMatricula[e.Matricula] = {matricula:e.Matricula, nome:e.Nome, cargo:e.Cargo, setor:e.Setor, unidade:e.Unidade_Alocacao, grupos:[]}; });
+
+  let gruposRelevantes = folgasGrupos.filter(g=> !g.excluido && porMatricula[g.matricula]);
+  if(respeitarFiltroTempoNaGestao) gruposRelevantes = gruposRelevantes.filter(folgaGrupoAtendeFiltroTempo);
+  gruposRelevantes.forEach(g=>{ porMatricula[g.matricula].grupos.push(g); });
+
+  const linhas = [];
+  Object.values(porMatricula).forEach(c=>{
+    if(!c.grupos.length) return; // sem nenhum lançamento no escopo — não aparece na gestão de saldo
+    const gruposOrdenados = c.grupos.slice().sort((a,b)=> a.mesReferencia.localeCompare(b.mesReferencia));
+    let acumuladas = 0, vencidas = 0, vencidasDefinitivo = 0, aVencerMes = 0, geradasNoMes = 0;
+    let prazoMaisProximo = null;
+    const mesAtualStr = fmtDateISO(hoje).slice(0,7);
+    gruposOrdenados.forEach(g=>{
+      const diasGerados = g._diasGerados || 0;
+      const pendentes = (g.dias||[]).filter(d=>!d.tirado).length;
+      acumuladas += pendentes;
+      if(pendentes>0){
+        const statusDia = classificarStatusDia(g.mesReferencia, hoje);
+        if(statusDia==='vencida') vencidas += pendentes;
+        else if(statusDia==='vencidaDefinitivo') vencidasDefinitivo += pendentes;
+        const prazoDefinitivo = prazoDefinitivoSemestral(g.mesReferencia);
+        if(prazoDefinitivo && prazoDefinitivo.getMonth()===hoje.getMonth() && prazoDefinitivo.getFullYear()===hoje.getFullYear()) aVencerMes += pendentes;
+        if(prazoDefinitivo && (!prazoMaisProximo || prazoDefinitivo < prazoMaisProximo)) prazoMaisProximo = prazoDefinitivo;
+      }
+      if(g.mesReferencia === mesAtualStr) geradasNoMes += diasGerados;
+    });
+    const atrasadas = vencidas + vencidasDefinitivo;
+    const diasAoPrazo = prazoMaisProximo ? diferencaDias(prazoMaisProximo, hoje) : null;
+    let status = 'semsaldo';
+    if(acumuladas>0){
+      if(vencidasDefinitivo>0) status = 'vencidaDefinitivo';
+      else if(vencidas>0) status = 'vencida';
+      else status = 'pendente';
+    }
+    linhas.push({
+      matricula:c.matricula, nome:c.nome, cargo:c.cargo, setor:c.setor, unidade:c.unidade,
+      grupos:gruposOrdenados, acumuladas, atrasadas, aVencerMes, geradasNoMes,
+      prazoMaisProximo, diasAoPrazo, status
+    });
+  });
+  return linhas.sort((a,b)=>{
+    // Prioriza prazo definitivo expirado, depois vencida, depois a vencer no mês, depois saldo total.
+    if(b.status==='vencidaDefinitivo' && a.status!=='vencidaDefinitivo') return 1;
+    if(a.status==='vencidaDefinitivo' && b.status!=='vencidaDefinitivo') return -1;
+    if(b.status==='vencida' && a.status!=='vencida' && a.status!=='vencidaDefinitivo') return 1;
+    if(a.status==='vencida' && b.status!=='vencida' && b.status!=='vencidaDefinitivo') return -1;
+    if(b.aVencerMes !== a.aVencerMes) return b.aVencerMes - a.aVencerMes;
+    return b.acumuladas - a.acumuladas;
+  });
+}
+function calcularResumoFolgas(){
+  const baseAtiva = getFolgasBaseAtiva();
+  // A Gestão por Colaborador é cumulativa por padrão (todos os grupos
+  // ativos); quando um Mês de Referência específico é escolhido no
+  // filtro, ela também se restringe a esse mês.
+  const linhas = montarResumoFolgasPorColaborador(baseAtiva, !!folgasFiltros.mesReferencia);
+  const geradasNoMes = linhas.reduce((s,l)=> s+l.geradasNoMes, 0);
+  const aVencerNoMes = linhas.reduce((s,l)=> s+l.aVencerMes, 0);
+  const acumuladas = linhas.reduce((s,l)=> s+l.acumuladas, 0);
+  const atrasadas = linhas.reduce((s,l)=> s+l.atrasadas, 0);
+  return {linhas, geradasNoMes, aVencerNoMes, acumuladas, atrasadas};
+}
+
+/* ---------------------------------------------------------------------
+   TABELA A — LANÇAMENTO MENSAL DE BANCO DE HORAS (um grupo por linha —
+   Colaborador + Mês de Referência —, já com a soma de todos os
+   lançamentos individuais daquele mês MAIS o saldo residual transportado
+   do mês anterior).
+   --------------------------------------------------------------------- */
+function getFolgasGruposFiltrados(){
+  recalcularTodasCadeiasFolgas();
+  const baseAtiva = getFolgasBaseAtiva();
+  const matriculas = new Set(baseAtiva.map(e=>e.Matricula));
+  return folgasGrupos.filter(g=> !g.excluido && matriculas.has(g.matricula) && folgaGrupoAtendeFiltroTempo(g))
+    .slice().sort((a,b)=> b.mesReferencia.localeCompare(a.mesReferencia));
+}
+function linhaLancamentoFolgaHtml(g){
+  const prazo = prazoDefinitivoSemestral(g.mesReferencia);
+  const minutosTotal = g._minutosTotal||0;
+  const diasGerados = g._diasGerados||0;
+  const saldoResidualMin = g._saldoResidualMin||0;
+  const qtdLancamentos = (g.historico||[]).length;
+  const partes = [];
+  if(qtdLancamentos>0) partes.push((g.historico||[]).map(h=>formatarMinutosEmHoraMinuto(h.minutos)).join(' + '));
+  if(g._saldoAnteriorMin>0) partes.push('saldo anterior '+formatarMinutosEmHoraMinuto(g._saldoAnteriorMin));
+  const mostrarComposicao = qtdLancamentos>1 || g._saldoAnteriorMin>0;
+  const tituloComposicao = mostrarComposicao ? ` title="Composição: ${partes.join(' + ')} = ${formatarMinutosEmHoraMinuto(minutosTotal)}"` : '';
+  return `<tr>
+    <td>${escapeHtml(g.colaborador)}${mostrarComposicao?` <span class="hint"${tituloComposicao} style="cursor:help;">📎 detalhe</span>`:''}</td>
+    <td>${escapeHtml(labelUnidadeAmigavel(g.loja))}</td>
+    <td><input type="month" class="folgas-lanc-mes" data-id="${escapeHtml(g.id)}" value="${escapeHtml(g.mesReferencia||'')}" style="min-width:130px;"></td>
+    <td><input type="text" class="folgas-lanc-horas" data-id="${escapeHtml(g.id)}" value="${formatarMinutosEmHoraMinuto(minutosTotal)}" style="width:80px;"></td>
+    <td><input type="number" class="folgas-lanc-dias" data-id="${escapeHtml(g.id)}" min="0" step="1" value="${diasGerados}" style="width:70px;"></td>
+    <td>${formatarMinutosEmHoraMinuto(saldoResidualMin)}</td>
+    <td>${prazo? prazo.toLocaleDateString('pt-BR') : '—'}</td>
+    <td><button class="btn btn-sm btn-danger no-print" data-folgaslancact="excluir" data-id="${escapeHtml(g.id)}" type="button">🗑️</button></td>
+  </tr>`;
+}
+/* Edição inline — Mês de Referência, Horas Acumuladas (HH:MM) e Dias
+   Gerados ficam editáveis a qualquer momento (correção manual). Editar
+   Horas Acumuladas sobrescreve o TOTAL do mês (minutosManual) e reabre
+   Dias Gerados para o cálculo automático (floor/540); editar Dias
+   Gerados diretamente sobrescreve só o valor calculado (diasGeradosManual),
+   recalculando o Saldo Residual a partir dele. Em ambos os casos, dias já
+   concedidos (tirado=true) são preservados e toda a cadeia de meses
+   seguintes do colaborador é recalculada e persistida (o transporte de
+   saldo residual muda a partir deste mês). */
+function onFolgasLancTbodyChange(ev){
+  const t = ev.target;
+  const id = t.dataset.id;
+  const grupo = folgasGrupos.find(g=>g.id===id); if(!grupo) return;
+  if(t.classList.contains('folgas-lanc-mes')){
+    grupo.mesReferencia = t.value;
+  } else if(t.classList.contains('folgas-lanc-horas')){
+    grupo.minutosManual = parseHorasParaMinutos(t.value);
+    grupo.diasGeradosManual = null; // reabre Dias Gerados para o cálculo automático sobre o novo total
+  } else if(t.classList.contains('folgas-lanc-dias')){
+    grupo.diasGeradosManual = Number(t.value)||0;
+  } else { return; }
+  grupo.atualizadoEm = new Date().toISOString();
+  recalcularCadeiaFolgasColaborador(grupo.matricula);
+  saveFolgasStateLocal();
+  renderFolgasTab();
+  registrarLogAuditoria('Lançamento de Folgas/Banco de Horas atualizado: '+grupo.colaborador+' ('+formatarMesReferencia(grupo.mesReferencia)+')');
+  persistirCadeiaFolgasColaborador(grupo.matricula);
+}
+function excluirLancamentoFolga(id){
+  const grupo = folgasGrupos.find(g=>g.id===id); if(!grupo) return;
+  if(!confirm('Confirma a exclusão deste lançamento de banco de horas? Os dias de folga deste mês (inclusive os já concedidos) saem do monitoramento, e o saldo residual transportado para os meses seguintes deste colaborador será recalculado.')) return;
+  grupo.excluido = true;
+  grupo.atualizadoEm = new Date().toISOString();
+  recalcularCadeiaFolgasColaborador(grupo.matricula);
+  saveFolgasStateLocal();
+  renderFolgasTab();
+  registrarLogAuditoria('Lançamento de Folgas/Banco de Horas excluído: '+grupo.colaborador+' ('+formatarMesReferencia(grupo.mesReferencia)+')');
+  persistirCadeiaFolgasColaborador(grupo.matricula);
+}
+/* Prévia do lançamento: simula a cadeia (saldo anterior já transportado +
+   lançamentos já existentes no mesmo mês + o novo valor digitado) antes de
+   confirmar, mostrando Dias Gerados e Saldo Residual previstos. */
+function atualizarPreviewDiasFolgaLancamento(){
+  const campo = $('folgasLancDiasPreview');
+  const mat = $('folgasLancColaboradorSelect') ? $('folgasLancColaboradorSelect').value : '';
+  const mesReferencia = $('folgasLancData') ? $('folgasLancData').value : '';
+  const minutosNovos = parseHorasParaMinutos($('folgasLancHoras') ? $('folgasLancHoras').value : '');
+  if(!mat || !mesReferencia){ campo.value = '0 dia(s) · saldo residual previsto 00:00'; return; }
+  recalcularCadeiaFolgasColaborador(mat);
+  const anteriores = folgasGrupos.filter(g=> !g.excluido && g.matricula===mat && g.mesReferencia < mesReferencia)
+    .slice().sort((a,b)=> a.mesReferencia.localeCompare(b.mesReferencia));
+  const saldoAnteriorMin = anteriores.length ? (anteriores[anteriores.length-1]._saldoResidualMin||0) : 0;
+  const grupoMesmoMes = folgasGrupos.find(g=> !g.excluido && g.matricula===mat && g.mesReferencia===mesReferencia);
+  const minutosJaLancadosMes = grupoMesmoMes ? somarMinutosHistorico(grupoMesmoMes.historico) : 0;
+  const baseMes = grupoMesmoMes && grupoMesmoMes.minutosManual!=null ? grupoMesmoMes.minutosManual : (minutosJaLancadosMes + saldoAnteriorMin);
+  const minutosTotalPrevisto = baseMes + minutosNovos;
+  const diasPrevistos = diasGeradosDeMinutos(minutosTotalPrevisto);
+  const saldoResidualPrevisto = minutosTotalPrevisto % MINUTOS_POR_FOLGA;
+  campo.value = diasPrevistos+' dia(s) · saldo residual previsto '+formatarMinutosEmHoraMinuto(saldoResidualPrevisto);
+}
+/* Registra um novo lançamento de horas. Se já existir um grupo para este
+   Colaborador + Mês de Referência, a nova entrada é EMPILHADA no
+   histórico (requisito de agrupamento) em vez de criar um registro
+   paralelo; caso contrário, cria um novo grupo. Sempre reabre
+   minutosManual/diasGeradosManual para o cálculo automático e recalcula
+   (e persiste) toda a cadeia de meses do colaborador, pois o novo total
+   pode alterar o saldo residual transportado aos meses seguintes. */
+async function registrarNovoLancamentoFolga(){
+  const mat = $('folgasLancColaboradorSelect').value;
+  const empDados = rawData.find(e=>e.Matricula===mat);
+  if(!mat || !empDados){ alert('Selecione um colaborador válido.'); return; }
+  const mesReferencia = $('folgasLancData').value; // <input type="month">
+  if(!mesReferencia){ alert('Informe o Mês de Referência.'); return; }
+  const minutosNovos = parseHorasParaMinutos($('folgasLancHoras').value);
+  if(minutosNovos<=0){ alert('Informe as horas do lançamento (formato HH:MM, ex.: 06:30, ou decimal, ex.: 6,5).'); return; }
+
+  let grupo = folgasGrupos.find(g=> !g.excluido && g.matricula===mat && g.mesReferencia===mesReferencia);
+  const novo = !grupo;
+  const agora = new Date().toISOString();
+  if(!grupo){
+    grupo = {
+      id: 'folga_grp_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8),
+      matricula:mat, colaborador:empDados.Nome, loja:empDados.Unidade_Alocacao||'', setor:empDados.Setor||'',
+      mesReferencia, historico:[], minutosManual:null, diasGeradosManual:null, dias:[],
+      excluido:false, criadoEm:agora, atualizadoEm:agora
+    };
+    folgasGrupos.push(grupo);
+  }
+  grupo.historico.push({minutos: minutosNovos, dataLancamento: fmtDateISO(new Date())});
+  grupo.minutosManual = null; // nova entrada reabre o total para a soma automática do histórico + carry-over
+  grupo.diasGeradosManual = null;
+  grupo.atualizadoEm = agora;
+  recalcularCadeiaFolgasColaborador(mat);
+
+  saveFolgasStateLocal();
+  $('folgasLancHoras').value = '';
+  atualizarPreviewDiasFolgaLancamento();
+  renderFolgasTab();
+  registrarLogAuditoria((novo?'Novo lançamento de Folgas/Banco de Horas: ':'Lançamento adicional de Folgas/Banco de Horas: ')+grupo.colaborador+' — +'+formatarMinutosEmHoraMinuto(minutosNovos)+' em '+formatarMesReferencia(mesReferencia)+' (total do mês com transporte: '+formatarMinutosEmHoraMinuto(grupo._minutosTotal)+' / '+grupo._diasGerados+' dia(s) / saldo residual '+formatarMinutosEmHoraMinuto(grupo._saldoResidualMin)+')');
+  await persistirCadeiaFolgasColaborador(mat);
+}
+
+/* ---------------------------------------------------------------------
+   TABELA B — GESTÃO DE FOLGAS (saldo e prazos por colaborador) + MURAL +
+   GRÁFICOS de acompanhamento.
+   --------------------------------------------------------------------- */
+function linhaGestaoFolgaHtml(l){
+  const info = FOLGAS_STATUS_INFO[l.status];
+  const prazoTxt = l.prazoMaisProximo
+    ? l.prazoMaisProximo.toLocaleDateString('pt-BR') + (l.diasAoPrazo<0 ? ` (${Math.abs(l.diasAoPrazo)}d em atraso)` : ` (${l.diasAoPrazo}d restantes)`)
+    : '—';
+  const rowClass = l.status==='vencidaDefinitivo' ? 'folgas-row-atrasada' : (l.status==='vencida' ? 'folgas-row-avencer' : '');
+  return `<tr class="${rowClass}">
+    <td>${escapeHtml(l.matricula)}</td>
+    <td>${escapeHtml(l.nome)}</td>
+    <td>${escapeHtml(labelUnidadeAmigavel(l.unidade))}</td>
+    <td>${l.geradasNoMes}</td>
+    <td><strong>${l.acumuladas}</strong></td>
+    <td>${l.aVencerMes>0 ? `<span class="badge critical">${l.aVencerMes}</span>` : '0'}</td>
+    <td>${prazoTxt}</td>
+    <td><span class="badge ${info.badge}">${info.label}</span></td>
+    <td>
+      <div class="epi-actions no-print">
+        <button class="btn btn-sm btn-ghost" data-folgasact="tirar1" data-folgasmat="${escapeHtml(l.matricula)}" type="button" ${l.acumuladas<=0?'disabled':''}>✅ Registrar Folga Tirada</button>
+        <button class="btn btn-sm btn-outline" data-folgasact="gerenciar" data-folgasmat="${escapeHtml(l.matricula)}" type="button">📋 Gerenciar Lotes</button>
+      </div>
+    </td>
+  </tr>`;
+}
+function folgasMesCardHtml(l){
+  const tier = l.status==='vencidaDefinitivo' ? 'vencido' : (l.status==='vencida' ? 'critico' : 'emdia');
+  const diasTxt = l.diasAoPrazo==null ? '' : (l.diasAoPrazo<0 ? `Prazo definitivo ultrapassado há ${Math.abs(l.diasAoPrazo)} dia(s)` : `Prazo definitivo em ${l.prazoMaisProximo.toLocaleDateString('pt-BR')} — Restam ${l.diasAoPrazo} dia(s)`);
+  return `<div class="bday-card venc-mes-card ${tier}">
+    <div class="bday-top">
+      <div class="venc-mes-icon">🕐</div>
+      <div>
+        <div class="bday-name">${escapeHtml(l.nome)}</div>
+        <div class="bday-meta">${escapeHtml(l.cargo||'—')}</div>
+      </div>
+    </div>
+    <div class="bday-meta">${escapeHtml(l.setor||'—')} · ${escapeHtml(labelUnidadeAmigavel(l.unidade))}</div>
+    <div class="venc-mes-count ${tier}">${l.aVencerMes} folga(s) a vencer no mês — ${diasTxt}</div>
+  </div>`;
+}
+function renderFolgasMesGrid(linhas){
+  const relevantes = linhas.filter(l=> l.aVencerMes>0);
+  $('folgasMesGrid').innerHTML = relevantes.map(folgasMesCardHtml).join('') || '<div class="hint">Nenhum colaborador com folgas a vencer no mês atual para os filtros selecionados.</div>';
+}
+/* Gráfico 1 — Status (dia a dia, em todos os grupos ativos do filtro):
+   Concedidas vs Pendentes (dentro do próprio Mês de Referência) vs
+   Vencidas (fora do Mês de Referência — inclui as que já passaram do
+   Prazo Definitivo do fechamento semestral). */
+function renderGraficoFolgasStatus(linhas){
+  const hoje = new Date();
+  let concedidas=0, pendentes=0, vencidas=0;
+  linhas.forEach(l=>{
+    l.grupos.forEach(g=>{
+      (g.dias||[]).forEach(d=>{
+        if(d.tirado){ concedidas++; return; }
+        const statusDia = classificarStatusDia(g.mesReferencia, hoje);
+        if(statusDia==='pendente') pendentes++;
+        else vencidas++; // agrupa 'vencida' + 'vencidaDefinitivo' no gráfico
+      });
+    });
+  });
+  upsertChart('chartFolgasStatus', {
+    type:'doughnut',
+    data:{labels:['Concedidas','Pendentes','Vencidas'], datasets:[{data:[concedidas,pendentes,vencidas], backgroundColor:['#2563EB','#F59E0B','#EF4444'], borderColor:'#fff', borderWidth:2}]},
+    options:{responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{position:'bottom'},
+        tooltip:{callbacks:{label:(ctx)=>{
+          const total = ctx.dataset.data.reduce((a,b)=>a+b,0);
+          const pct = total? Math.round(ctx.parsed/total*100):0;
+          return `${ctx.label}: ${ctx.parsed} (${pct}%)`;
+        }}}
+      }}
+  }, {
+    labels:['Concedidas','Pendentes','Vencidas'], datasets:[{label:'Status das Folgas', data:[concedidas,pendentes,vencidas], colors:['#2563EB','#F59E0B','#EF4444']}]
+  });
+}
+/* Gráfico 2 — Ranking (top 10) dos colaboradores com maior saldo de
+   folgas acumuladas, na mesma ordem de prioridade da tabela de gestão. */
+function renderGraficoFolgasRanking(linhas){
+  const top = linhas.filter(l=> l.acumuladas>0).slice(0,10);
+  const corStatus = l=> l.status==='vencidaDefinitivo' ? '#EF4444' : (l.status==='vencida' ? '#F59E0B' : '#2563EB');
+  upsertChart('chartFolgasRanking', {
+    type:'bar',
+    data:{labels: top.map(l=>l.nome), datasets:[{
+      label:'Folgas Acumuladas', data: top.map(l=>l.acumuladas),
+      backgroundColor: top.map(corStatus),
+      borderRadius:4, maxBarThickness:28
+    }]},
+    options:{indexAxis:'y', responsive:true, maintainAspectRatio:false, scales:{x:{beginAtZero:true, ticks:{precision:0}}}, plugins:{legend:{display:false}}}
+  }, {
+    labels: top.map(l=>l.nome), datasets:[{label:'Folgas Acumuladas', data: top.map(l=>l.acumuladas), colors: top.map(corStatus)}]
+  });
+}
+function renderFolgasTab(){
+  populateFolgasFiltrosSelects();
+  const resumo = calcularResumoFolgas();
+  $('folgas-kpi-geradas').textContent = resumo.geradasNoMes;
+  $('folgas-kpi-avencer').textContent = resumo.aVencerNoMes;
+  $('folgas-kpi-acumuladas').textContent = resumo.acumuladas;
+  $('folgas-kpi-atrasadas').textContent = resumo.atrasadas;
+
+  renderGraficoFolgasStatus(resumo.linhas);
+  renderGraficoFolgasRanking(resumo.linhas);
+  renderFolgasMesGrid(resumo.linhas);
+
+  const grupos = getFolgasGruposFiltrados();
+  $('folgasLancTbody').innerHTML = grupos.map(linhaLancamentoFolgaHtml).join('') || '<tr><td colspan="8" class="hint">Nenhum lançamento de banco de horas no período/filtros selecionados.</td></tr>';
+
+  $('folgasGestaoTbody').innerHTML = resumo.linhas.map(linhaGestaoFolgaHtml).join('') || '<tr><td colspan="9" class="hint">Nenhum colaborador com lançamento de banco de horas para os filtros atuais.</td></tr>';
+  $('folgasGestaoCountInfo').textContent = `${resumo.linhas.length} colaborador(es) com lançamento — ordenado por urgência.`;
+}
+
+/* ---------------------------------------------------------------------
+   AÇÃO RÁPIDA — "Registrar Folga Tirada" consome 1 dia pendente seguindo
+   estritamente a ordem FIFO: Mês de Referência mais antigo primeiro e,
+   dentro dele, o menor número de dia ainda não concedido.
+   --------------------------------------------------------------------- */
+async function registrarFolgaTiradaFifo(matricula){
+  recalcularCadeiaFolgasColaborador(matricula);
+  const gruposDoColaborador = folgasGrupos.filter(g=> !g.excluido && g.matricula===matricula)
+    .slice().sort((a,b)=> a.mesReferencia.localeCompare(b.mesReferencia));
+  let grupoAlvo = null, diaAlvo = null;
+  for(const grupo of gruposDoColaborador){
+    const dia = (grupo.dias||[]).find(d=>!d.tirado);
+    if(dia){ grupoAlvo = grupo; diaAlvo = dia; break; }
+  }
+  if(!grupoAlvo){ alert('Este colaborador não possui folgas pendentes para registrar.'); return; }
+  if(!confirm('Confirma o registro de 1 folga tirada hoje para este colaborador? (Consumida do mês de referência '+formatarMesReferencia(grupoAlvo.mesReferencia)+' — o mais antigo com saldo pendente)')) return;
+  diaAlvo.tirado = true;
+  diaAlvo.dataTirado = fmtDateISO(new Date());
+  grupoAlvo.atualizadoEm = new Date().toISOString();
+  saveFolgasStateLocal();
+  renderFolgasTab();
+  registrarLogAuditoria('Folga tirada registrada (FIFO): '+grupoAlvo.colaborador+' — dia '+diaAlvo.numero+' do mês de referência '+formatarMesReferencia(grupoAlvo.mesReferencia));
+  await salvarFolgaGrupoNaPlanilha(grupoAlvo);
+}
+
+/* ---------------------------------------------------------------------
+   MODAL "GERENCIAR FOLGAS" — detalha TODOS os grupos/dias do colaborador
+   em ordem FIFO, com checklist individual editável por dia (mesmo padrão
+   de renderParcelasEdicao/onCronogramaTbodyChange de Empréstimos).
+   --------------------------------------------------------------------- */
+function abrirGerenciarFolgas(matricula){
+  const resumo = calcularResumoFolgas();
+  const l = resumo.linhas.find(x=> x.matricula===matricula); if(!l) return;
+  $('folgasGerenciarMatricula').value = matricula;
+  $('folgasGerenciarTitulo').textContent = '🕐 Gerenciar Folgas — '+l.nome;
+  $('folgasGerenciarInfo').textContent = `${l.nome} — ${l.cargo||'—'} (${labelUnidadeAmigavel(l.unidade)})`;
+  renderFolgasGerenciarTabela(l);
+  $('folgasGerenciarOverlay').classList.remove('hidden');
+}
+function renderFolgasGerenciarTabela(l){
+  const linhasHtml = [];
+  l.grupos.forEach(g=>{
+    const prazo = prazoDefinitivoSemestral(g.mesReferencia);
+    (g.dias||[]).forEach(d=>{
+      linhasHtml.push(`<tr data-grupoid="${escapeHtml(g.id)}" data-dianum="${d.numero}">
+        <td>${escapeHtml(formatarMesReferencia(g.mesReferencia))}</td>
+        <td>${prazo? prazo.toLocaleDateString('pt-BR') : '—'}</td>
+        <td>${d.numero}</td>
+        <td style="text-align:center;"><input type="checkbox" class="folgas-dia-tirado" ${d.tirado?'checked':''}></td>
+        <td>${d.tirado ? `<input type="date" class="folgas-dia-data" value="${escapeHtml(d.dataTirado||fmtDateISO(new Date()))}">` : '<span class="hint">—</span>'}</td>
+      </tr>`);
+    });
+  });
+  $('folgasGerenciarDiasTbody').innerHTML = linhasHtml.join('') || '<tr><td colspan="5" class="hint">Nenhum lançamento para este colaborador.</td></tr>';
+  $('folgasGerenciarResumoSaldo').textContent = l.acumuladas;
+  $('folgasGerenciarResumoConcedidas').textContent = l.grupos.reduce((s,g)=> s+(g.dias||[]).filter(d=>d.tirado).length, 0);
+  $('folgasGerenciarResumoPrazo').textContent = l.prazoMaisProximo ? l.prazoMaisProximo.toLocaleDateString('pt-BR') : '—';
+}
+function fecharGerenciarFolgas(){ $('folgasGerenciarOverlay').classList.add('hidden'); }
+function onFolgasGerenciarTbodyChange(ev){
+  const t = ev.target;
+  const tr = t.closest('tr'); if(!tr) return;
+  const grupoId = tr.dataset.grupoid;
+  const diaNum = Number(tr.dataset.dianum);
+  const grupo = folgasGrupos.find(g=>g.id===grupoId); if(!grupo) return;
+  const dia = (grupo.dias||[]).find(d=>d.numero===diaNum); if(!dia) return;
+  if(t.classList.contains('folgas-dia-tirado')){
+    dia.tirado = t.checked;
+    dia.dataTirado = t.checked ? (dia.dataTirado || fmtDateISO(new Date())) : '';
+    grupo.atualizadoEm = new Date().toISOString();
+    const matricula = $('folgasGerenciarMatricula').value;
+    const resumo = calcularResumoFolgas();
+    const l = resumo.linhas.find(x=>x.matricula===matricula);
+    if(l) renderFolgasGerenciarTabela(l);
+  } else if(t.classList.contains('folgas-dia-data')){
+    dia.dataTirado = t.value;
+    grupo.atualizadoEm = new Date().toISOString();
+  }
+}
+async function salvarGerenciarFolgas(){
+  const matricula = $('folgasGerenciarMatricula').value;
+  saveFolgasStateLocal();
+  fecharGerenciarFolgas();
+  renderFolgasTab();
+  registrarLogAuditoria('Folgas atualizadas manualmente (Gerenciar Lotes): '+matricula);
+  await persistirCadeiaFolgasColaborador(matricula);
+}
+
+/* ---------------------------------------------------------------------
+   RELATÓRIO CONSOLIDADO ("Gerar Relatório de Folgas") — respeita os
+   filtros atuais da aba (Mês de Referência/Período/Colaborador/Loja/
+   Setor), agrupado por Loja/Unidade — mesmo padrão de clone destacado
+   dos demais relatórios (imprimirMapaFerias/imprimirMapaTrocaEpis).
+   --------------------------------------------------------------------- */
+function imprimirRelatorioFolgas(){
+  const resumo = calcularResumoFolgas();
+  const linhas = resumo.linhas.filter(l=> l.acumuladas>0 || l.geradasNoMes>0);
+  const hoje = new Date();
+
+  const grupos = {};
+  linhas.forEach(l=>{
+    const chave = labelUnidadeAmigavel(l.unidade) || 'Não Informada';
+    if(!grupos[chave]) grupos[chave] = [];
+    grupos[chave].push(l);
+  });
+  const unidadesOrdenadas = Object.keys(grupos).sort((a,b)=> a.localeCompare(b,'pt-BR'));
+
+  const gruposHtml = unidadesOrdenadas.map(unidade=>{
+    const linhasHtml = grupos[unidade].slice().sort((a,b)=> b.acumuladas-a.acumuladas).map(l=>{
+      const info = FOLGAS_STATUS_INFO[l.status];
+      const prazoTxt = l.prazoMaisProximo ? l.prazoMaisProximo.toLocaleDateString('pt-BR') : '—';
+      return `<tr>
+        <td>${escapeHtml(l.matricula)}</td>
+        <td>${escapeHtml(l.nome)}</td>
+        <td>${l.geradasNoMes}</td>
+        <td>${l.acumuladas}</td>
+        <td>${l.aVencerMes}</td>
+        <td>${prazoTxt}</td>
+        <td>${info.label}</td>
+      </tr>`;
+    }).join('');
+    return `<div class="folgas-print-group-title">📍 ${escapeHtml(unidade)} — ${grupos[unidade].length} colaborador(es)</div>
+      <table class="folgas-print-table">
+        <thead><tr><th>Matrícula</th><th>Colaborador</th><th>Geradas no Mês</th><th>Acumuladas</th><th>A Vencer no Mês</th><th>Prazo Mais Próximo</th><th>Status</th></tr></thead>
+        <tbody>${linhasHtml}</tbody>
+      </table>`;
+  }).join('') || '<div class="hint">Nenhum colaborador com saldo ou lançamento de folgas para os filtros selecionados.</div>';
+
+  const periodoLabel = {mes:'Mês Atual', trimestre:'Últimos 3 Meses', semestre:'Últimos 6 Meses'}[folgasFiltros.periodo] || 'Mês Atual';
+  const mesRefLabel = folgasFiltros.mesReferencia ? formatarMesReferencia(folgasFiltros.mesReferencia) : periodoLabel;
+  const html = `
+    <div class="folgas-print-header">
+      <div class="folgas-print-title">GRUPO BRASMETAL — RELATÓRIO DE FOLGAS E BANCO DE HORAS (MATRIZ &amp; FILIAIS)</div>
+      <div class="folgas-print-sub">Emitido em ${hoje.toLocaleDateString('pt-BR')} às ${hoje.toLocaleTimeString('pt-BR')} — ${linhas.length} colaborador(es) no filtro atual.</div>
+      <div class="folgas-print-sub">Filtros: Mês de Referência/Período: ${escapeHtml(mesRefLabel)} · Loja/Unidade: ${folgasFiltros.loja==='todas'?'Todas':labelUnidadeAmigavel(folgasFiltros.loja)} · Setor: ${folgasFiltros.setor==='todos'?'Todos':escapeHtml(folgasFiltros.setor)}${folgasFiltros.colaborador?(' · Colaborador: '+escapeHtml(folgasFiltros.colaborador)):''}</div>
+    </div>
+    ${gruposHtml}`;
+
+  const printRoot = $('folgasPrintRoot');
+  printRoot.innerHTML = html;
+  document.body.classList.add('printing-folgas-only');
+  window.print();
+  document.body.classList.remove('printing-folgas-only');
+  printRoot.innerHTML = '';
+}
+
+function wireFolgasEvents(){
+  $('folgasFilterPeriodo').addEventListener('change', ()=>{ folgasFiltros.periodo = $('folgasFilterPeriodo').value; renderFolgasTab(); });
+  $('folgasFilterMesReferencia').addEventListener('change', ()=>{ folgasFiltros.mesReferencia = $('folgasFilterMesReferencia').value; renderFolgasTab(); });
+  $('folgasFilterColaborador').addEventListener('input', ()=>{ folgasFiltros.colaborador = $('folgasFilterColaborador').value; renderFolgasTab(); });
+  $('folgasFilterLoja').addEventListener('change', ()=>{ folgasFiltros.loja = $('folgasFilterLoja').value; renderFolgasTab(); });
+  $('folgasFilterSetor').addEventListener('change', ()=>{ folgasFiltros.setor = $('folgasFilterSetor').value; renderFolgasTab(); });
+  $('btnGerarRelatorioFolgas').addEventListener('click', imprimirRelatorioFolgas);
+
+  $('folgasLancColaboradorSelect').addEventListener('change', atualizarPreviewDiasFolgaLancamento);
+  $('folgasLancData').addEventListener('change', atualizarPreviewDiasFolgaLancamento);
+  $('folgasLancHoras').addEventListener('input', atualizarPreviewDiasFolgaLancamento);
+  $('btnLancarFolga').addEventListener('click', registrarNovoLancamentoFolga);
+  $('folgasLancTbody').addEventListener('change', onFolgasLancTbodyChange);
+  $('folgasLancTbody').addEventListener('click', (ev)=>{
+    const btn = ev.target.closest('button[data-folgaslancact]'); if(!btn) return;
+    if(btn.dataset.folgaslancact === 'excluir') excluirLancamentoFolga(btn.dataset.id);
+  });
+
+  $('folgasGestaoTbody').addEventListener('click', (ev)=>{
+    const btn = ev.target.closest('button[data-folgasact]'); if(!btn) return;
+    const mat = btn.dataset.folgasmat;
+    if(btn.dataset.folgasact === 'tirar1') registrarFolgaTiradaFifo(mat);
+    else if(btn.dataset.folgasact === 'gerenciar') abrirGerenciarFolgas(mat);
+  });
+
+  $('btnFolgasGerenciarFechar').addEventListener('click', fecharGerenciarFolgas);
+  $('folgasGerenciarOverlay').addEventListener('click', e=>{ if(e.target === $('folgasGerenciarOverlay')) fecharGerenciarFolgas(); });
+  $('folgasGerenciarDiasTbody').addEventListener('change', onFolgasGerenciarTbodyChange);
+  $('btnFolgasGerenciarSalvar').addEventListener('click', salvarGerenciarFolgas);
 }
 
 /* =====================================================================
@@ -11511,6 +12560,7 @@ function wireEvents(){
     if(e.key === 'Escape' && !$('rsEditOverlay').classList.contains('hidden')) fecharEditarVaga();
     if(e.key === 'Escape' && !$('epiEditOverlay').classList.contains('hidden')) fecharEditarDataEpi();
     if(e.key === 'Escape' && !$('feriasEditOverlay').classList.contains('hidden')) fecharProgramarFerias();
+    if(e.key === 'Escape' && !$('folgasGerenciarOverlay').classList.contains('hidden')) fecharGerenciarFolgas();
     if(e.key === 'Escape' && !$('quickMsgTplOverlay').classList.contains('hidden')) fecharModalQuickMsgTpl();
     if(e.key === 'Escape' && !$('auditoriaModalOverlay').classList.contains('hidden')) fecharModalAuditoria();
   });
@@ -11565,6 +12615,8 @@ function wireEvents(){
 
   // --- Empréstimos (persistência compartilhada via Google Sheets) ---
   wireEmprestimosEvents();
+  // --- Folgas e Banco de Horas (persistência compartilhada via Google Sheets) ---
+  wireFolgasEvents();
   // Nota: EPI, Kanban, R&S/Vagas e 9Box não precisam de novos listeners —
   // a sincronização compartilhada foi acoplada diretamente às funções
   // saveEpiState/saveTasks/saveRsVagas/saveNinebox já existentes (ver cada
@@ -12306,6 +13358,7 @@ function init(){
   $('turnEnd').value = fmtDateISO(hoje);
   $('pdiDataInicio').value = fmtDateISO(hoje);
   $('surveyDate').value = fmtDateISO(hoje);
+  if($('folgasLancData')) $('folgasLancData').value = fmtDateISO(hoje).slice(0,7); // 'YYYY-MM' — input type="month"
   renderSurveyBlocks();
   buildLikertInputs();
   buildEnpsInputs();
@@ -12327,6 +13380,7 @@ function init(){
   loadEpiState();
   loadVacationState();
   loadEmprestimosState();
+  loadFolgasState();
   carregarDadosIniciais();
   renderKanban();
   if(!chartJsAvailable){
